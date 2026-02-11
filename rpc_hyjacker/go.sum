@@ -1,0 +1,4 @@
+github.com/hindsightchat/rpc-reader v0.0.0-20260211044329-0d397d0b7fcf h1:l1YEFprEexFCCNQJnnLTbwbcJW7rj9zxqDc/WOrxe5M=
+github.com/hindsightchat/rpc-reader v0.0.0-20260211044329-0d397d0b7fcf/go.mod h1:kU5NvhdRTVtqwamNxZHzCvzhbLVweNnp0Wty9pAByfU=
+gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7GC73Ei8pv4MzjDUNPHgQWJdtMAaDU=
+gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=

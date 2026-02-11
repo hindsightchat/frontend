@@ -1,0 +1,31 @@
+name: hindsightchat
+description: "A new Flutter project."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^10.0.0
+  forui: ^0.16.0
+  cupertino_icons: ^1.0.8
+  go_router: ^16.2.4
+  skeletonizer: ^2.1.0+1
+  shared_preferences: ^2.5.3
+  http: ^1.5.0
+  provider: ^6.1.5+1
+  web_socket_channel: ^2.4.0
+  dart_ipc: ^1.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  flutter_secure_storage: ^10.0.0
+
+flutter:
+  uses-material-design: true
