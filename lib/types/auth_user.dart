@@ -1,18 +1,19 @@
-
 class AuthUser {
   final String id;
   final String username;
   final String domain;
   final String email;
   final bool isDomainVerified;
+  String profilePicURL = "";
   final String? token;
 
-  const AuthUser({
+  AuthUser({
     required this.id,
     required this.username,
     required this.domain,
     required this.email,
     required this.isDomainVerified,
+    this.profilePicURL = "",
     this.token,
   });
 
@@ -23,6 +24,7 @@ class AuthUser {
     email: json['email'] as String? ?? '',
     isDomainVerified: json['isDomainVerified'] as bool? ?? false,
     token: json['token'] as String?,
+    profilePicURL: json['profilePicURL'] as String? ?? '',
   );
 
   Map<String, dynamic> toJson() => {
@@ -32,6 +34,7 @@ class AuthUser {
     'email': email,
     'isDomainVerified': isDomainVerified,
     if (token != null) 'token': token,
+    'profilePicURL': profilePicURL,
   };
 
   AuthUser copyWith({
@@ -40,6 +43,7 @@ class AuthUser {
     String? domain,
     String? email,
     bool? isDomainVerified,
+    String? profilePicURL,
     String? token,
   }) => AuthUser(
     id: id ?? this.id,
@@ -48,5 +52,6 @@ class AuthUser {
     email: email ?? this.email,
     isDomainVerified: isDomainVerified ?? this.isDomainVerified,
     token: token ?? this.token,
+    profilePicURL: profilePicURL ?? this.profilePicURL,
   );
 }

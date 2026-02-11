@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:hindsightchat/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:hindsightchat/types/api_response.dart';
 
@@ -7,11 +8,8 @@ class ApiHelper {
   final String? token;
   final String baseUrl;
 
-  static const String _defaultBaseUrl = kDebugMode
-      ? 'http://localhost:3000'
-      : 'https://api.hindsight.chat';
-
-  ApiHelper({this.token, String? baseUrl}) : baseUrl = baseUrl ?? _defaultBaseUrl;
+  ApiHelper({this.token, String? baseUrl})
+    : baseUrl = baseUrl ?? Constants().API_URL;
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -21,7 +19,9 @@ class ApiHelper {
   Uri _buildUri(String path, [Map<String, dynamic>? queryParams]) {
     final uri = Uri.parse('$baseUrl$path');
     if (queryParams != null && queryParams.isNotEmpty) {
-      return uri.replace(queryParameters: queryParams.map((k, v) => MapEntry(k, v.toString())));
+      return uri.replace(
+        queryParameters: queryParams.map((k, v) => MapEntry(k, v.toString())),
+      );
     }
     return uri;
   }
@@ -63,10 +63,17 @@ class ApiHelper {
     Map<String, dynamic>? queryParams,
   }) async {
     try {
-      final response = await http.get(_buildUri(path, queryParams), headers: _headers);
+      final response = await http.get(
+        _buildUri(path, queryParams),
+        headers: _headers,
+      );
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      return ApiResponse<T>(success: false, error: 'Network error: $e', statusCode: 0);
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network error: $e',
+        statusCode: 0,
+      );
     }
   }
 
@@ -84,7 +91,11 @@ class ApiHelper {
       );
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      return ApiResponse<T>(success: false, error: 'Network error: $e', statusCode: 0);
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network error: $e',
+        statusCode: 0,
+      );
     }
   }
 
@@ -102,7 +113,11 @@ class ApiHelper {
       );
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      return ApiResponse<T>(success: false, error: 'Network error: $e', statusCode: 0);
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network error: $e',
+        statusCode: 0,
+      );
     }
   }
 
@@ -112,10 +127,17 @@ class ApiHelper {
     Map<String, dynamic>? queryParams,
   }) async {
     try {
-      final response = await http.delete(_buildUri(path, queryParams), headers: _headers);
+      final response = await http.delete(
+        _buildUri(path, queryParams),
+        headers: _headers,
+      );
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      return ApiResponse<T>(success: false, error: 'Network error: $e', statusCode: 0);
+      return ApiResponse<T>(
+        success: false,
+        error: 'Network error: $e',
+        statusCode: 0,
+      );
     }
   }
 }

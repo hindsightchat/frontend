@@ -1,26 +1,67 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hindsightchat/components/Colours.dart';
+import 'package:hindsightchat/layouts/MainLayout.dart';
 import 'package:hindsightchat/pages/auth/login_page.dart';
+import 'package:hindsightchat/pages/main/MainPage.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
+import 'package:hindsightchat/providers/SidebarProvider.dart';
+import 'package:hindsightchat/providers/MobileNavigationProvider.dart';
 import 'package:provider/provider.dart';
 
+// window
+import 'package:window_manager/window_manager.dart';
+import 'package:hindsightchat/components/DesktopTitlebar.dart';
+
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final _router = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: "/",
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const Example()),
+    ShellRoute(
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const MainPage()),
+      ],
+      navigatorKey: _shellNavigatorKey,
+      builder: (context, state, child) => MainLayout(child: child),
+    ),
+
     GoRoute(path: "/login", builder: (context, state) => LoginPage()),
   ],
 );
 
-void main() {
+void main() async {
   usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+
+  GoRouter.optionURLReflectsImperativeAPIs =
+      true; // enable URL updates on context.go()
+
+  if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    await windowManager.ensureInitialized();
+
+    WindowOptions windowOptions = WindowOptions(
+      size: Size(1280, 720),
+      minimumSize: Size(100, 100),
+      center: true,
+      backgroundColor: DarkBackgroundColor,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+      title: "Hindsight Chat",
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   runApp(const Application());
 }
 
@@ -46,6 +87,7 @@ class AppWrapper extends StatefulWidget {
 }
 
 class _AppWrapperState extends State<AppWrapper> {
+  bool _isInitialized = false;
   @override
   void initState() {
     super.initState();
@@ -55,21 +97,44 @@ class _AppWrapperState extends State<AppWrapper> {
       final dataProvider = Provider.of<DataProvider>(context, listen: false);
       authProvider.setDataProvider(dataProvider);
       authProvider.init();
+
+      // wait until authProvider.isLoading is false, then set _isInitialized to true
+
+      Future.doWhile(() async {
+        await Future.delayed(Duration(milliseconds: 100));
+        return authProvider.isLoading;
+      }).then((_) {
+        setState(() => _isInitialized = true);
+      });
     });
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        color: DarkBackgroundColor,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    } else {
+      return widget.child;
+    }
+  }
 }
 
 class Application extends StatelessWidget {
   const Application({super.key});
+
+  bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
   @override
   Widget build(BuildContext context) => MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => AuthProvider()),
       ChangeNotifierProvider(create: (_) => DataProvider()),
+      ChangeNotifierProvider(create: (_) => SidebarProvider()),
+      ChangeNotifierProvider(create: (_) => MobileNavigationProvider()),
     ],
     child: Builder(
       builder: (context) {
@@ -96,64 +161,27 @@ class Application extends StatelessWidget {
           ),
           builder: (_, child) => AppWrapper(
             child: Material(
-              child: FAnimatedTheme(data: theme, child: child!),
+              child: FAnimatedTheme(
+                data: theme,
+                child: _isDesktop
+                    ? Overlay(
+                        initialEntries: [
+                          OverlayEntry(
+                            builder: (context) => Column(
+                              children: [
+                                const DesktopTitlebar(),
+                                Expanded(child: child!),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : child!,
+              ),
             ),
           ),
         );
       },
     ),
   );
-}
-
-class Example extends StatefulWidget {
-  const Example({super.key});
-
-  @override
-  State<Example> createState() => _ExampleState();
-}
-
-class _ExampleState extends State<Example> {
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final data = context.watch<DataProvider>();
-
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 10,
-          children: [
-            if (auth.isAuthenticated) ...[
-              Text('Welcome ${auth.user?.username ?? ""}'),
-              Text('Friends: ${data.friends.length}'),
-              Text('Conversations: ${data.conversations.length}'),
-              Text('Servers: ${data.servers.length}'),
-              Text('Incoming requests: ${data.incomingRequests.length}'),
-              Text(
-                'Presence details: ${data.currentActivity?.details ?? "None"}',
-              ),
-              Text('Presence state: ${data.currentActivity?.state ?? "None"}'),
-              Text(
-                "Presence small text: ${data.currentActivity?.smallText ?? "None"}",
-              ),
-              Text(
-                "Presence large text: ${data.currentActivity?.largeText ?? "None"}",
-              ),
-
-              FButton(onPress: auth.logout, child: const Text('Logout')),
-            ] else ...[
-              const Text('Not logged in'),
-              FButton(
-                onPress: () {
-                  GoRouter.of(context).go("/login");
-                },
-                child: const Text('Login'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }

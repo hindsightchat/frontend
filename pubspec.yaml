@@ -19,6 +19,7 @@ dependencies:
   provider: ^6.1.5+1
   web_socket_channel: ^2.4.0
   dart_ipc: ^1.0.1
+  window_manager: ^0.5.1
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +30,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/
+
+  fonts:
+    - family: "Inter"
+      fonts:
+        - asset: fonts/Inter.ttf
+        - asset: fonts/Inter-Italic.ttf
+          style: italic

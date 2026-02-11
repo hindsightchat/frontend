@@ -5,6 +5,7 @@ class User {
   String username;
   String email;
   String domain;
+  String? profilePicURL;
   Activity? activity;
 
   User({
@@ -12,6 +13,7 @@ class User {
     this.username = "",
     this.email = "",
     this.domain = "",
+    this.profilePicURL = "",
     this.activity,
   });
 
@@ -24,6 +26,7 @@ class User {
       activity = Activity();
       activity!.fromJson(json['activity']);
     }
+    profilePicURL = json['profilePicURL'] ?? "";
   }
 
   Map<String, dynamic> toJson() {
@@ -33,6 +36,7 @@ class User {
       'email': email,
       'domain': domain,
       'activity': activity?.toJson(),
+      'profilePicURL': profilePicURL,
     };
   }
 }

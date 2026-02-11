@@ -72,10 +72,10 @@ class WebSocketService {
     try {
       debugPrint('[ws] connecting to $_wsUrl');
       _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
-      
+
       await _channel!.ready;
       debugPrint('[ws] connection ready, sending identify');
-      
+
       _channel!.stream.listen(
         _onMessage,
         onError: _onError,
@@ -132,7 +132,9 @@ class WebSocketService {
 
   void _handleDispatch(WsMessage msg) {
     if (msg.nonce != null && _pendingAcks.containsKey(msg.nonce)) {
-      _pendingAcks[msg.nonce]!.complete(msg.data as Map<String, dynamic>? ?? {});
+      _pendingAcks[msg.nonce]!.complete(
+        msg.data as Map<String, dynamic>? ?? {},
+      );
       _pendingAcks.remove(msg.nonce);
       return;
     }
@@ -190,7 +192,9 @@ class WebSocketService {
     _reconnectTimer?.cancel();
     final delay = Duration(seconds: (1 << _reconnectAttempts).clamp(1, 30));
     _reconnectAttempts++;
-    debugPrint('[ws] reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
+    debugPrint(
+      '[ws] reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)',
+    );
 
     _reconnectTimer = Timer(delay, _connect);
   }
@@ -199,7 +203,9 @@ class WebSocketService {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       debugPrint('[ws] sending heartbeat');
-      send(WsMessage(op: 1, data: {'ts': DateTime.now().millisecondsSinceEpoch}));
+      send(
+        WsMessage(op: 1, data: {'ts': DateTime.now().millisecondsSinceEpoch}),
+      );
     });
   }
 
@@ -223,17 +229,23 @@ class WebSocketService {
     }
   }
 
-  Future<Map<String, dynamic>> sendWithAck(WsMessage msg, {Duration timeout = const Duration(seconds: 10)}) {
+  Future<Map<String, dynamic>> sendWithAck(
+    WsMessage msg, {
+    Duration timeout = const Duration(seconds: 10),
+  }) {
     final nonce = DateTime.now().microsecondsSinceEpoch.toString();
     final completer = Completer<Map<String, dynamic>>();
     _pendingAcks[nonce] = completer;
 
     send(WsMessage(op: msg.op, data: msg.data, event: msg.event, nonce: nonce));
 
-    return completer.future.timeout(timeout, onTimeout: () {
-      _pendingAcks.remove(nonce);
-      throw TimeoutException('No ack received');
-    });
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        _pendingAcks.remove(nonce);
+        throw TimeoutException('No ack received');
+      },
+    );
   }
 
   void on(EventType event, EventCallback callback) {
@@ -271,35 +283,66 @@ class WebSocketService {
   }
 
   void updatePresence(String status, {Activity? activity}) {
-    send(WsMessage(op: 3, data: {'status': status, if (activity != null) 'activity': activity.toJson()}));
+    send(
+      WsMessage(
+        op: 3,
+        data: {
+          'status': status,
+          if (activity != null) 'activity': activity.toJson(),
+        },
+      ),
+    );
   }
 
   void setFocus({String? channelId, String? serverId, String? conversationId}) {
-    send(WsMessage(op: 4, data: {
-      if (channelId != null) 'channel_id': channelId,
-      if (serverId != null) 'server_id': serverId,
-      if (conversationId != null) 'conversation_id': conversationId,
-    }));
+    send(
+      WsMessage(
+        op: 4,
+        data: {
+          if (channelId != null) 'channel_id': channelId,
+          if (serverId != null) 'server_id': serverId,
+          if (conversationId != null) 'conversation_id': conversationId,
+        },
+      ),
+    );
   }
 
   void clearFocus() {
     send(WsMessage(op: 4, data: {}));
   }
 
-  void startTyping({String? channelId, String? serverId, String? conversationId}) {
-    send(WsMessage(op: 20, data: {
-      if (channelId != null) 'channel_id': channelId,
-      if (serverId != null) 'server_id': serverId,
-      if (conversationId != null) 'conversation_id': conversationId,
-    }));
+  void startTyping({
+    String? channelId,
+    String? serverId,
+    String? conversationId,
+  }) {
+    send(
+      WsMessage(
+        op: 20,
+        data: {
+          if (channelId != null) 'channel_id': channelId,
+          if (serverId != null) 'server_id': serverId,
+          if (conversationId != null) 'conversation_id': conversationId,
+        },
+      ),
+    );
   }
 
-  void stopTyping({String? channelId, String? serverId, String? conversationId}) {
-    send(WsMessage(op: 21, data: {
-      if (channelId != null) 'channel_id': channelId,
-      if (serverId != null) 'server_id': serverId,
-      if (conversationId != null) 'conversation_id': conversationId,
-    }));
+  void stopTyping({
+    String? channelId,
+    String? serverId,
+    String? conversationId,
+  }) {
+    send(
+      WsMessage(
+        op: 21,
+        data: {
+          if (channelId != null) 'channel_id': channelId,
+          if (serverId != null) 'server_id': serverId,
+          if (conversationId != null) 'conversation_id': conversationId,
+        },
+      ),
+    );
   }
 
   Future<Map<String, dynamic>> sendMessage({
@@ -309,21 +352,35 @@ class WebSocketService {
     required String content,
     String? replyToId,
   }) {
-    return sendWithAck(WsMessage(op: 22, data: {
-      if (channelId != null) 'channel_id': channelId,
-      if (serverId != null) 'server_id': serverId,
-      if (conversationId != null) 'conversation_id': conversationId,
-      'content': content,
-      if (replyToId != null) 'reply_to_id': replyToId,
-    }));
+    return sendWithAck(
+      WsMessage(
+        op: 22,
+        data: {
+          if (channelId != null) 'channel_id': channelId,
+          if (serverId != null) 'server_id': serverId,
+          if (conversationId != null) 'conversation_id': conversationId,
+          'content': content,
+          if (replyToId != null) 'reply_to_id': replyToId,
+        },
+      ),
+    );
   }
 
-  void ackMessage({String? channelId, String? conversationId, required String messageId}) {
-    send(WsMessage(op: 25, data: {
-      if (channelId != null) 'channel_id': channelId,
-      if (conversationId != null) 'conversation_id': conversationId,
-      'message_id': messageId,
-    }));
+  void ackMessage({
+    String? channelId,
+    String? conversationId,
+    required String messageId,
+  }) {
+    send(
+      WsMessage(
+        op: 25,
+        data: {
+          if (channelId != null) 'channel_id': channelId,
+          if (conversationId != null) 'conversation_id': conversationId,
+          'message_id': messageId,
+        },
+      ),
+    );
   }
 }
 
