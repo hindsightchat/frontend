@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hindsightchat/api_helper/friends_api.dart';
 import 'package:hindsightchat/api_helper/users_api.dart';
+import 'package:hindsightchat/api_helper/conversations_api.dart';
 import 'package:hindsightchat/api_helper/ApiHelper.dart';
 import 'package:hindsightchat/services/websocket_service.dart';
-import 'package:hindsightchat/types/Activity.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:hindsightchat/types/websocket/websocket-types.dart';
 import 'package:hindsightchat/services/ipc_service.dart'
@@ -18,6 +18,13 @@ class DataProvider extends ChangeNotifier {
   final Map<String, FriendRequest> _outgoingRequests = {};
   final Map<String, Conversation> _conversations = {};
   final Map<String, Server> _servers = {};
+  
+  // msgs per conversation
+  final Map<String, List<DirectMessage>> _messages = {};
+  
+  // conversations with unread messages
+  // TODO: refactor to track unread message IDs instead of just conversation IDs for more granular control
+  final Set<String> _unreadConversations = {};
 
   IpcServer? _ipcServer;
   RpcProcessManager? _rpcProcess;
@@ -44,9 +51,14 @@ class DataProvider extends ChangeNotifier {
       _friends.values.where((f) => f.user.id == userId).firstOrNull;
   Conversation? getConversation(String id) => _conversations[id];
   Server? getServer(String id) => _servers[id];
+  
+  List<DirectMessage> getMessages(String conversationId) => _messages[conversationId] ?? [];
+  bool hasUnread(String conversationId) => _unreadConversations.contains(conversationId);
+  Set<String> get unreadConversations => _unreadConversations;
 
   FriendsApi get _friendsApi => FriendsApi(ApiHelper(token: _token));
   UsersApi get _usersApi => UsersApi(ApiHelper(token: _token));
+  ConversationsApi get _conversationsApi => ConversationsApi(ApiHelper(token: _token));
 
   Future<void> init(String token) async {
     if (_isInitialized) return;
@@ -145,6 +157,9 @@ class DataProvider extends ChangeNotifier {
     ws.on(EventType.serverMemberRemove, _onServerLeave);
     ws.on(EventType.serverUpdate, _onServerUpdate);
     ws.on(EventType.userUpdate, _onUserUpdate);
+    ws.on(EventType.dmMessageCreate, _onDmMessageCreate);
+    ws.on(EventType.dmMessageNotify, _onDmMessageNotify);
+    ws.on(EventType.presenceUpdate, _onPresenceUpdate);
   }
 
   void _unsubscribeFromWebSocket() {
@@ -158,6 +173,9 @@ class DataProvider extends ChangeNotifier {
     ws.off(EventType.serverMemberRemove, _onServerLeave);
     ws.off(EventType.serverUpdate, _onServerUpdate);
     ws.off(EventType.userUpdate, _onUserUpdate);
+    ws.off(EventType.dmMessageCreate, _onDmMessageCreate);
+    ws.off(EventType.dmMessageNotify, _onDmMessageNotify);
+    ws.off(EventType.presenceUpdate, _onPresenceUpdate);
   }
 
   Future<void> _loadFriends() async {
@@ -207,6 +225,56 @@ class DataProvider extends ChangeNotifier {
       for (final s in response.data!) {
         _servers[s.id] = s;
       }
+    }
+  }
+  
+  Future<List<DirectMessage>> loadMessages(
+    String conversationId, {
+    int? limit,
+    String? before,
+    String? after,
+    String? around,
+  }) async {
+    final response = await _conversationsApi.getMessages(
+      conversationId,
+      limit: limit,
+      before: before,
+      after: after,
+      around: around,
+    );
+    
+    if (response.isSuccess && response.data != null) {
+      if (before == null && after == null && around == null) {
+        // init load - replace messages
+        _messages[conversationId] = response.data!;
+      } else if (before != null) {
+        // loading older messages - prepend
+        final existing = _messages[conversationId] ?? [];
+        _messages[conversationId] = [...response.data!, ...existing];
+      } else if (after != null) {
+        // loading newer messages - append
+        final existing = _messages[conversationId] ?? [];
+        _messages[conversationId] = [...existing, ...response.data!];
+      }
+      notifyListeners();
+      return response.data!;
+    }
+    
+    return [];
+  }
+  
+  void markConversationRead(String conversationId) {
+    if (_unreadConversations.remove(conversationId)) {
+      notifyListeners();
+    }
+  }
+  
+  void addMessage(String conversationId, DirectMessage message) {
+    final messages = _messages[conversationId] ?? [];
+    // check if message already exists
+    if (!messages.any((m) => m.id == message.id)) {
+      _messages[conversationId] = [...messages, message];
+      notifyListeners();
     }
   }
 
@@ -308,6 +376,64 @@ class DataProvider extends ChangeNotifier {
 
     if (changed) notifyListeners();
   }
+  
+  void _onDmMessageCreate(Map<String, dynamic> data) {
+    // full message received (user has focus on this conversation)
+    final conversationId = data['conversation_id'] as String?;
+    if (conversationId == null) return;
+    
+    final message = DirectMessage.fromJson(data);
+    addMessage(conversationId, message);
+  }
+  
+  void _onDmMessageNotify(Map<String, dynamic> data) {
+    // notif only (user doesn't have focus on this conversation)
+    final conversationId = data['conversation_id'] as String?;
+    if (conversationId == null) return;
+    
+    _unreadConversations.add(conversationId);
+    notifyListeners();
+  }
+  
+  void _onPresenceUpdate(Map<String, dynamic> data) {
+    final userId = data['user_id'] as String?;
+    if (userId == null) return;
+    
+    final status = data['status'] as String? ?? 'offline';
+    final activityData = data['activity'] as Map<String, dynamic>?;
+    final updatedAt = data['updated_at'] as int? ?? 0;
+    
+    // find friend with this user ID and update their presence
+    for (final entry in _friends.entries) {
+      if (entry.value.user.id == userId) {
+        final oldFriend = entry.value;
+        final newPresence = Presence(
+          status: status,
+          activity: activityData != null 
+              ? Activity.fromJson(activityData) 
+              : null,
+          updatedAt: updatedAt,
+        );
+        
+        final newUser = UserBrief(
+          id: oldFriend.user.id,
+          username: oldFriend.user.username,
+          domain: oldFriend.user.domain,
+          presence: newPresence,
+        );
+        
+        _friends[entry.key] = Friendship(
+          id: oldFriend.id,
+          user: newUser,
+          conversationId: oldFriend.conversationId,
+          since: oldFriend.since,
+        );
+        
+        notifyListeners();
+        break;
+      }
+    }
+  }
 
   Future<bool> sendFriendRequest({String? userId, String? username}) async {
     final response = await _friendsApi.sendRequest(
@@ -391,6 +517,8 @@ class DataProvider extends ChangeNotifier {
     _outgoingRequests.clear();
     _conversations.clear();
     _servers.clear();
+    _messages.clear();
+    _unreadConversations.clear();
     _isInitialized = false;
     _isLoading = false;
     _error = null;

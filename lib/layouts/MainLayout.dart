@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/helpers/isMobile.dart';
+import 'package:hindsightchat/mixins/SidebarMixin.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/providers/MobileNavigationProvider.dart';
@@ -40,7 +42,6 @@ class _MainLayoutState extends State<MainLayout> {
   }
 }
 
-/// Desktop layout with sidebars and main content
 class _DesktopLayout extends StatelessWidget {
   final Widget child;
 
@@ -50,7 +51,6 @@ class _DesktopLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Left section: Server sidebar + Content sidebar + User panel
         SizedBox(
           width: 72 + 300,
           child: Stack(
@@ -68,14 +68,12 @@ class _DesktopLayout extends StatelessWidget {
             ],
           ),
         ),
-        // Main content area
         Expanded(child: child),
       ],
     );
   }
 }
 
-/// Mobile layout with sidebar only + sliding page sheet
 class _MobileLayout extends StatefulWidget {
   final Widget child;
 
@@ -122,12 +120,12 @@ class _MobileLayoutState extends State<_MobileLayout>
     final screenWidth = context.size?.width ?? 400;
 
     if (mobileNav.isPageOpen || mobileNav.pageBuilder != null) {
-      // Page is open or being dragged - allow bidirectional dragging
-      // Swipe right (delta > 0) closes, swipe left (delta < 0) opens
-      final newValue = (_controller.value - delta / screenWidth).clamp(0.0, 1.0);
+      final newValue = (_controller.value - delta / screenWidth).clamp(
+        0.0,
+        1.0,
+      );
       _controller.value = newValue;
     } else if (mobileNav.hasLastPage && delta < 0) {
-      // Page is closed and has a last page - start opening on left swipe
       mobileNav.reopenLastPage();
       _controller.value = (-delta / screenWidth).clamp(0.0, 1.0);
     }
@@ -141,15 +139,12 @@ class _MobileLayoutState extends State<_MobileLayout>
     final velocity = details.primaryVelocity ?? 0;
 
     if (mobileNav.isPageOpen || mobileNav.pageBuilder != null) {
-      // Determine whether to open or close based on position and velocity
       if (_controller.value > 0.5 || velocity < -500) {
-        // Open the page
         _controller.forward();
         if (!mobileNav.isPageOpen) {
           mobileNav.reopenLastPage();
         }
       } else {
-        // Close the page
         _controller.reverse().then((_) {
           mobileNav.closePage();
           mobileNav.clearPage();
@@ -162,7 +157,6 @@ class _MobileLayoutState extends State<_MobileLayout>
   Widget build(BuildContext context) {
     final mobileNav = context.watch<MobileNavigationProvider>();
 
-    // Animate based on page state (only if not dragging)
     if (!_isDragging) {
       if (mobileNav.isPageOpen && mobileNav.pageBuilder != null) {
         _controller.forward();
@@ -184,7 +178,6 @@ class _MobileLayoutState extends State<_MobileLayout>
           _onHorizontalDragEnd(details, mobileNav),
       child: Stack(
         children: [
-          // Sidebar takes full width on mobile
           Column(
             children: [
               Expanded(
@@ -199,7 +192,6 @@ class _MobileLayoutState extends State<_MobileLayout>
               const MobileUserPanel(),
             ],
           ),
-          // Edge swipe indicator (shows when there's a page to reopen)
           if (mobileNav.hasLastPage &&
               !mobileNav.isPageOpen &&
               mobileNav.pageBuilder == null)
@@ -218,7 +210,6 @@ class _MobileLayoutState extends State<_MobileLayout>
                 ),
               ),
             ),
-          // Sliding page sheet
           if (mobileNav.pageBuilder != null)
             SlideTransition(
               position: _slideAnimation,
@@ -239,7 +230,6 @@ class _MobileLayoutState extends State<_MobileLayout>
   }
 }
 
-/// Mobile-optimized content sidebar (full width)
 class MobileContentSidebar extends StatelessWidget {
   const MobileContentSidebar({super.key});
 
@@ -257,7 +247,6 @@ class MobileContentSidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Search bar
           Container(
             padding: const EdgeInsets.all(10),
             decoration: const BoxDecoration(
@@ -285,7 +274,6 @@ class MobileContentSidebar extends StatelessWidget {
               ),
             ),
           ),
-          // Sidebar content
           Expanded(
             child: sidebarBuilder != null
                 ? (sidebarBuilder(context) ?? const _DefaultSidebarContent())
@@ -297,7 +285,6 @@ class MobileContentSidebar extends StatelessWidget {
   }
 }
 
-/// Mobile user panel (simpler, full width)
 class MobileUserPanel extends StatelessWidget {
   const MobileUserPanel({super.key});
 
@@ -316,7 +303,6 @@ class MobileUserPanel extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            // Avatar
             Stack(
               children: [
                 Container(
@@ -350,7 +336,6 @@ class MobileUserPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 12),
-            // Username
             Expanded(
               child: Text(
                 user?.username ?? 'User',
@@ -362,11 +347,6 @@ class MobileUserPanel extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Settings button
-            IconButton(
-              icon: const Icon(Icons.settings, color: Color(0xFFB5BAC1)),
-              onPressed: () {},
-            ),
           ],
         ),
       ),
@@ -374,7 +354,6 @@ class MobileUserPanel extends StatelessWidget {
   }
 }
 
-/// Discord-style server sidebar with icons
 class ServerSidebar extends StatefulWidget {
   const ServerSidebar({super.key});
 
@@ -602,7 +581,6 @@ class _AddServerButton extends StatelessWidget {
   }
 }
 
-/// Desktop content sidebar
 class ContentSidebar extends StatelessWidget {
   const ContentSidebar({super.key});
 
@@ -668,27 +646,14 @@ class _DefaultSidebarContent extends StatefulWidget {
 class _DefaultSidebarContentState extends State<_DefaultSidebarContent> {
   @override
   Widget build(BuildContext context) {
-    final dataProvider = context.watch<DataProvider>();
-
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       children: [
-        _SidebarNavItem(
-          icon: Icons.people,
-          label: 'Friends',
-          isSelected: true,
-          onTap: () {},
+        SidebarNavItem(
+          icon: FIcons.alarmClockOff,
+          label: "test",
+          onSelect: () => {},
         ),
-        const SizedBox(height: 16),
-        _SidebarSection(title: 'Direct Messages', onAddPressed: () {}),
-        for (final convo in dataProvider.conversations)
-          _SidebarNavItem(
-            icon: Icons.account_circle,
-            label: convo.isGroup
-                ? convo.name ?? 'Group Chat'
-                : convo.participants.first.username,
-            onTap: () {},
-          ),
       ],
     );
   }
@@ -775,10 +740,11 @@ class _SidebarSection extends StatelessWidget {
           Expanded(
             child: Text(
               title.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF949BA4),
-                fontSize: 11,
+              style: TextStyle(
+                color: SidebarSectionTextColor,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
+                fontFamily: "Inter",
                 letterSpacing: 0.24,
               ),
             ),
@@ -794,7 +760,6 @@ class _SidebarSection extends StatelessWidget {
   }
 }
 
-/// Desktop user panel
 class UserPanel extends StatefulWidget {
   const UserPanel({super.key});
 
@@ -815,8 +780,8 @@ class _UserPanelState extends State<UserPanel> {
       alignment: Alignment.center,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: const BoxDecoration(
-          color: Color(0xFF232428),
+        decoration: BoxDecoration(
+          color: MessageSendBoxColor,
           borderRadius: BorderRadius.all(Radius.circular(20)),
         ),
         alignment: Alignment.center,

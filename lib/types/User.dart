@@ -23,8 +23,12 @@ class User {
     email = json['email'] ?? "";
     domain = json['domain'] ?? "";
     if (json['activity'] != null) {
-      activity = Activity();
-      activity!.fromJson(json['activity']);
+      final activityF = Activity.fromJson(
+        json['activity'] as Map<String, dynamic>,
+      );
+      activity = activityF;
+    } else {
+      activity = null;
     }
     profilePicURL = json['profilePicURL'] ?? "";
   }
