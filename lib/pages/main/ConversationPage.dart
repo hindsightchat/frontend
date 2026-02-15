@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hindsightchat/components/Colours.dart';
+import 'package:hindsightchat/components/Conversations/UserSidebar.dart';
+import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/services/websocket_service.dart';
 import 'package:hindsightchat/types/models.dart';
@@ -140,6 +142,7 @@ class ConversationPageState extends State<ConversationPage> {
   @override
   Widget build(BuildContext context) {
     final dataProvider = context.watch<DataProvider>();
+    final authProvider = context.watch<AuthProvider>();
     final conversation = dataProvider.getConversation(widget.conversationId);
     final messages = dataProvider.getMessages(widget.conversationId);
 
@@ -152,9 +155,27 @@ class ConversationPageState extends State<ConversationPage> {
       );
     }
 
-    final participantName = conversation.participants.isNotEmpty
-        ? conversation.participants.first.username
-        : 'Unknown';
+    final groupName = conversation.name;
+    String participantName;
+
+    if (groupName != null && groupName.isNotEmpty) {
+      participantName = groupName;
+    } else if (conversation.participants.isEmpty) {
+      participantName = 'Unknown';
+    } else {
+      // Try to find a participant that isn't the current user
+      final otherParticipants = conversation.participants
+          .where((p) => p.id != authProvider.user?.id)
+          .toList();
+      if (otherParticipants.isNotEmpty) {
+        participantName = otherParticipants.first.username;
+      } else {
+        // Fallback to first participant if all else fails
+        participantName = conversation.participants.first.username;
+      }
+    }
+
+    final isScreenSmall = MediaQuery.of(context).size.width < 1000;
 
     return Row(
       children: [
@@ -169,9 +190,6 @@ class ConversationPageState extends State<ConversationPage> {
                   color: MessageBackgroundColor,
                   border: Border(
                     bottom: BorderSide(color: MessageBorderColor, width: 1),
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(30),
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -332,128 +350,16 @@ class ConversationPageState extends State<ConversationPage> {
             ],
           ),
         ),
-        Container(
-          width: 300,
-          decoration: BoxDecoration(
-            color: UserProfileSideBarColor,
-
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(30),
-            ),
+        if (!isScreenSmall && conversation.participants.isNotEmpty)
+          UserSidebar(
+            otherUserId:
+                conversation.participants
+                    .where((p) => p.id != authProvider.user?.id)
+                    .firstOrNull
+                    ?.id ??
+                conversation.participants.first.id,
+            participantName: participantName,
           ),
-          child: Column(
-            children: [
-              Container(
-                height: 60,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: MessageBorderColor, width: 1),
-                  ),
-                  color: MessageBackgroundColor,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                alignment: Alignment.centerLeft,
-                child: SizedBox.shrink(),
-              ),
-              // panel content
-              Expanded(
-                child: Container(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          // banner fill width of panel and height of 100px, with rounded corners
-                          Container(
-                            height: 100,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: MessageBackgroundColor,
-                            ),
-                            // image take entire container but maintain aspect ratio and be centered
-                            // as base64
-                            child: Image.network(
-                              "https://i.redd.it/i9zw9k4hoqj51.jpg",
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          // profile picture 80x80px, circular, with border of 4px in UserProfileSideBarColor, overlapping banner and centered horizontally
-                          Positioned(
-                            top: 60,
-                            left: 20,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: UserProfileSideBarColor,
-                                  width: 4,
-                                ),
-                                image: DecorationImage(
-                                  image: NetworkImage(
-                                    "https://github.com/DwifteJB.png",
-                                    
-                                  ),
-                                  
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 60),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              participantName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: "Inter",
-                              ),
-                            ),
-
-                            SizedBox(height: 10),
-
-                            Container(
-                              width: double.infinity,
-
-                              decoration: BoxDecoration(
-                                color: UserProfileDescriptionBGColor,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Text(
-                                  'placeholder description',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontFamily: "Inter",
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }

@@ -19,7 +19,20 @@ Color MutedTextColor = const Color(0xFF767676);
 // 7B7B7B
 Color SidebarSectionTextColor = const Color(0xFF7B7B7B);
 
-// 292A2C
-Color UserProfileSideBarColor = const Color(0xFF292A2C);
+// 080808
+Color UserProfileSideBarColor = const Color(0xFF080808);
 
 Color UserProfileDescriptionBGColor = const Color(0xFF3C3C3C);
+
+Color MainAccessColor(String status) {
+  switch (status) {
+    case 'online':
+      return const Color(0xFF3BA55C); // Green
+    case 'idle':
+      return const Color(0xFFFAA61A); // Yellow/Orange
+    case 'dnd':
+      return const Color(0xFFED4245); // Red
+    default:
+      return const Color(0xFF747F8D); // Gray (offline)
+  }
+}

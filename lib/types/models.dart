@@ -27,12 +27,14 @@ class Activity {
   final String largeText;
   final String details;
   final String state;
+  final String AppName;
 
   const Activity({
     this.smallText = '',
     this.largeText = '',
     this.details = '',
     this.state = '',
+    this.AppName = '',
   });
 
   factory Activity.fromJson(Map<String, dynamic> json) => Activity(
@@ -40,6 +42,7 @@ class Activity {
     largeText: json['large_text'] as String? ?? '',
     details: json['details'] as String? ?? '',
     state: json['state'] as String? ?? '',
+    AppName: json['app_name'] as String? ?? '',
   );
 
   Map<String, dynamic> toJson() => {
@@ -47,6 +50,7 @@ class Activity {
     'large_text': largeText,
     'details': details,
     'state': state,
+    'app_name': AppName,
   };
 
   bool get hasActivity => details.isNotEmpty || state.isNotEmpty;
@@ -91,23 +95,30 @@ class UserBrief {
 
 class Friendship {
   final String id;
-  final UserBrief user;
+  final String visibleUserId;  // the other user in the friendship
+  final String visibleUsername;  // cached for display when user not in cache
   final String conversationId;
   final DateTime since;
 
   const Friendship({
     required this.id,
-    required this.user,
+    required this.visibleUserId,
+    required this.visibleUsername,
     required this.conversationId,
     required this.since,
   });
 
-  factory Friendship.fromJson(Map<String, dynamic> json) => Friendship(
-    id: json['id'] as String? ?? '',
-    user: UserBrief.fromJson(json['user'] as Map<String, dynamic>? ?? {}),
-    conversationId: json['conversation_id'] as String? ?? '',
-    since: DateTime.tryParse(json['since'] as String? ?? '') ?? DateTime.now(),
-  );
+  factory Friendship.fromJson(Map<String, dynamic> json) {
+    // backend sends 'user' object with the other user's data
+    final userData = json['user'] as Map<String, dynamic>? ?? {};
+    return Friendship(
+      id: json['id'] as String? ?? '',
+      visibleUserId: userData['id'] as String? ?? '',
+      visibleUsername: userData['username'] as String? ?? '',
+      conversationId: json['conversation_id'] as String? ?? '',
+      since: DateTime.tryParse(json['since'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
 }
 
 class FriendRequest {

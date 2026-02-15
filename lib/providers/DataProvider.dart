@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:hindsightchat/api_helper/friends_api.dart';
 import 'package:hindsightchat/api_helper/users_api.dart';
 import 'package:hindsightchat/api_helper/conversations_api.dart';
@@ -18,6 +19,10 @@ class DataProvider extends ChangeNotifier {
   final Map<String, FriendRequest> _outgoingRequests = {};
   final Map<String, Conversation> _conversations = {};
   final Map<String, Server> _servers = {};
+  
+  // centralized user cache - tracks all users we interact with (friends, group members, server members)
+  // receives presence updates for anyone in our conversations/servers
+  final Map<String, UserBrief> _users = {};
   
   // msgs per conversation
   final Map<String, List<DirectMessage>> _messages = {};
@@ -47,10 +52,14 @@ class DataProvider extends ChangeNotifier {
   String? get error => _error;
   Activity? get currentActivity => _currentActivity;
   Friendship? getFriend(String id) => _friends[id];
-  Friendship? getFriendByUserId(String userId) =>
-      _friends.values.where((f) => f.user.id == userId).firstOrNull;
+  Friendship? getFriendByUserId(String visibleUserId) =>
+      _friends.values.where((f) => f.visibleUserId == visibleUserId).firstOrNull;
   Conversation? getConversation(String id) => _conversations[id];
   Server? getServer(String id) => _servers[id];
+  UserBrief? getUser(String id) => _users[id];
+  
+  // get the user data for a friendship (from users cache)
+  UserBrief? getFriendUser(Friendship friendship) => _users[friendship.visibleUserId];
   
   List<DirectMessage> getMessages(String conversationId) => _messages[conversationId] ?? [];
   bool hasUnread(String conversationId) => _unreadConversations.contains(conversationId);
@@ -59,6 +68,23 @@ class DataProvider extends ChangeNotifier {
   FriendsApi get _friendsApi => FriendsApi(ApiHelper(token: _token));
   UsersApi get _usersApi => UsersApi(ApiHelper(token: _token));
   ConversationsApi get _conversationsApi => ConversationsApi(ApiHelper(token: _token));
+  
+  // helper to add/update user in cache (preserves existing presence if not provided)
+  void _cacheUser(UserBrief user) {
+    final existing = _users[user.id];
+    if (existing != null && user.presence == null) {
+      // preserve existing presence if new user doesn't have one
+      _users[user.id] = UserBrief(
+        id: user.id,
+        username: user.username,
+        domain: user.domain,
+        profilePicURL: user.profilePicURL,
+        presence: existing.presence,
+      );
+    } else {
+      _users[user.id] = user;
+    }
+  }
 
   Future<void> init(String token) async {
     if (_isInitialized) return;
@@ -146,7 +172,12 @@ class DataProvider extends ChangeNotifier {
     }
   }
 
+  StreamSubscription<Map<String, dynamic>>? _readySubscription;
+  
   void _subscribeToWebSocket() {
+    // listen to READY event for initial user data
+    _readySubscription = ws.readyStream.listen(_onReady);
+    
     ws.on(EventType.friendRequestCreate, _onFriendRequestCreate);
     ws.on(EventType.friendRequestAccepted, _onFriendRequestAccepted);
     ws.on(EventType.friendRemove, _onFriendRemove);
@@ -163,6 +194,9 @@ class DataProvider extends ChangeNotifier {
   }
 
   void _unsubscribeFromWebSocket() {
+    _readySubscription?.cancel();
+    _readySubscription = null;
+    
     ws.off(EventType.friendRequestCreate, _onFriendRequestCreate);
     ws.off(EventType.friendRequestAccepted, _onFriendRequestAccepted);
     ws.off(EventType.friendRemove, _onFriendRemove);
@@ -176,6 +210,38 @@ class DataProvider extends ChangeNotifier {
     ws.off(EventType.dmMessageCreate, _onDmMessageCreate);
     ws.off(EventType.dmMessageNotify, _onDmMessageNotify);
     ws.off(EventType.presenceUpdate, _onPresenceUpdate);
+  }
+  
+  void _onReady(Map<String, dynamic> data) {
+    // populate users cache from READY payload
+    final usersList = data['users'] as List<dynamic>?;
+    if (usersList != null) {
+      for (final userData in usersList) {
+        final userMap = userData as Map<String, dynamic>;
+        final presenceData = userMap['presence'] as Map<String, dynamic>?;
+        
+        Presence? presence;
+        if (presenceData != null) {
+          final activityData = presenceData['activity'] as Map<String, dynamic>?;
+          presence = Presence(
+            status: presenceData['status'] as String? ?? 'offline',
+            activity: activityData != null ? Activity.fromJson(activityData) : null,
+            updatedAt: presenceData['updated_at'] as int? ?? 0,
+          );
+        }
+        
+        final user = UserBrief(
+          id: userMap['id'] as String? ?? '',
+          username: userMap['username'] as String? ?? '',
+          domain: userMap['domain'] as String? ?? '',
+          profilePicURL: userMap['profilePicURL'] as String? ?? '',
+          presence: presence,
+        );
+        
+        _users[user.id] = user;
+      }
+      _notifyAndScheduleFrame();
+    }
   }
 
   Future<void> _loadFriends() async {
@@ -214,6 +280,10 @@ class DataProvider extends ChangeNotifier {
       _conversations.clear();
       for (final c in response.data!) {
         _conversations[c.id] = c;
+        // cache all participants
+        for (final p in c.participants) {
+          _cacheUser(p);
+        }
       }
     }
   }
@@ -274,14 +344,21 @@ class DataProvider extends ChangeNotifier {
     // check if message already exists
     if (!messages.any((m) => m.id == message.id)) {
       _messages[conversationId] = [...messages, message];
-      notifyListeners();
+      _notifyAndScheduleFrame();
     }
+  }
+  
+  // notifies listeners and forces a frame to be scheduled
+  // needed for desktop apps that don't repaint when idle/unfocused
+  void _notifyAndScheduleFrame() {
+    notifyListeners();
+    SchedulerBinding.instance.scheduleFrame();
   }
 
   void _onFriendRequestCreate(Map<String, dynamic> data) {
     final request = FriendRequest.fromJson(data);
     _incomingRequests[request.id] = request;
-    notifyListeners();
+    _notifyAndScheduleFrame();
   }
 
   void _onFriendRequestAccepted(Map<String, dynamic> data) {
@@ -291,9 +368,14 @@ class DataProvider extends ChangeNotifier {
 
     if (friendshipId != null && userData != null) {
       final user = UserBrief.fromJson(userData);
+      
+      // cache the user
+      _cacheUser(user);
+      
       final friendship = Friendship(
         id: friendshipId,
-        user: user,
+        visibleUserId: user.id,
+        visibleUsername: user.username,
         conversationId: conversationId ?? '',
         since: DateTime.now(),
       );
@@ -302,50 +384,50 @@ class DataProvider extends ChangeNotifier {
       _outgoingRequests.removeWhere((_, r) => r.receiver.id == user.id);
       _incomingRequests.removeWhere((_, r) => r.sender.id == user.id);
 
-      notifyListeners();
+      _notifyAndScheduleFrame();
     }
   }
 
   void _onFriendRemove(Map<String, dynamic> data) {
     final userId = data['user_id'] as String?;
     if (userId != null) {
-      _friends.removeWhere((_, f) => f.user.id == userId);
-      notifyListeners();
+      _friends.removeWhere((_, f) => f.visibleUserId == userId);
+      _notifyAndScheduleFrame();
     }
   }
 
   void _onDmCreate(Map<String, dynamic> data) {
-    _loadConversations().then((_) => notifyListeners());
+    _loadConversations().then((_) => _notifyAndScheduleFrame());
   }
 
   void _onDmParticipantAdd(Map<String, dynamic> data) {
     final convId = data['conversation_id'] as String?;
     if (convId != null) {
-      _loadConversations().then((_) => notifyListeners());
+      _loadConversations().then((_) => _notifyAndScheduleFrame());
     }
   }
 
   void _onDmParticipantLeft(Map<String, dynamic> data) {
     final convId = data['conversation_id'] as String?;
     if (convId != null) {
-      _loadConversations().then((_) => notifyListeners());
+      _loadConversations().then((_) => _notifyAndScheduleFrame());
     }
   }
 
   void _onServerJoin(Map<String, dynamic> data) {
-    _loadServers().then((_) => notifyListeners());
+    _loadServers().then((_) => _notifyAndScheduleFrame());
   }
 
   void _onServerLeave(Map<String, dynamic> data) {
     final serverId = data['server_id'] as String?;
     if (serverId != null) {
       _servers.remove(serverId);
-      notifyListeners();
+      _notifyAndScheduleFrame();
     }
   }
 
   void _onServerUpdate(Map<String, dynamic> data) {
-    _loadServers().then((_) => notifyListeners());
+    _loadServers().then((_) => _notifyAndScheduleFrame());
   }
 
   void _onUserUpdate(Map<String, dynamic> data) {
@@ -353,28 +435,18 @@ class DataProvider extends ChangeNotifier {
     final fields = data['fields'] as Map<String, dynamic>?;
     if (userId == null || fields == null) return;
 
-    var changed = false;
-
-    for (final entry in _friends.entries) {
-      if (entry.value.user.id == userId) {
-        final oldUser = entry.value.user;
-        final newUser = UserBrief(
-          id: oldUser.id,
-          username: fields['username'] as String? ?? oldUser.username,
-          domain: fields['domain'] as String? ?? oldUser.domain,
-        );
-        _friends[entry.key] = Friendship(
-          id: entry.value.id,
-          user: newUser,
-          conversationId: entry.value.conversationId,
-          since: entry.value.since,
-        );
-        changed = true;
-        break;
-      }
+    // update users cache
+    final existingUser = _users[userId];
+    if (existingUser != null) {
+      _users[userId] = UserBrief(
+        id: existingUser.id,
+        username: fields['username'] as String? ?? existingUser.username,
+        domain: fields['domain'] as String? ?? existingUser.domain,
+        profilePicURL: fields['profilePicURL'] as String? ?? existingUser.profilePicURL,
+        presence: existingUser.presence,
+      );
+      _notifyAndScheduleFrame();
     }
-
-    if (changed) notifyListeners();
   }
   
   void _onDmMessageCreate(Map<String, dynamic> data) {
@@ -392,7 +464,7 @@ class DataProvider extends ChangeNotifier {
     if (conversationId == null) return;
     
     _unreadConversations.add(conversationId);
-    notifyListeners();
+    _notifyAndScheduleFrame();
   }
   
   void _onPresenceUpdate(Map<String, dynamic> data) {
@@ -403,35 +475,25 @@ class DataProvider extends ChangeNotifier {
     final activityData = data['activity'] as Map<String, dynamic>?;
     final updatedAt = data['updated_at'] as int? ?? 0;
     
-    // find friend with this user ID and update their presence
-    for (final entry in _friends.entries) {
-      if (entry.value.user.id == userId) {
-        final oldFriend = entry.value;
-        final newPresence = Presence(
-          status: status,
-          activity: activityData != null 
-              ? Activity.fromJson(activityData) 
-              : null,
-          updatedAt: updatedAt,
-        );
-        
-        final newUser = UserBrief(
-          id: oldFriend.user.id,
-          username: oldFriend.user.username,
-          domain: oldFriend.user.domain,
-          presence: newPresence,
-        );
-        
-        _friends[entry.key] = Friendship(
-          id: oldFriend.id,
-          user: newUser,
-          conversationId: oldFriend.conversationId,
-          since: oldFriend.since,
-        );
-        
-        notifyListeners();
-        break;
-      }
+    final newPresence = Presence(
+      status: status,
+      activity: activityData != null 
+          ? Activity.fromJson(activityData) 
+          : null,
+      updatedAt: updatedAt,
+    );
+    
+    // update centralized user cache (single source of truth)
+    final existingUser = _users[userId];
+    if (existingUser != null) {
+      _users[userId] = UserBrief(
+        id: existingUser.id,
+        username: existingUser.username,
+        domain: existingUser.domain,
+        profilePicURL: existingUser.profilePicURL,
+        presence: newPresence,
+      );
+      _notifyAndScheduleFrame();
     }
   }
 
@@ -487,10 +549,10 @@ class DataProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> removeFriend(String friendId) async {
-    final response = await _friendsApi.removeFriend(friendId);
+  Future<bool> removeFriend(String visibleUserId) async {
+    final response = await _friendsApi.removeFriend(visibleUserId);
     if (response.isSuccess) {
-      _friends.removeWhere((_, f) => f.user.id == friendId);
+      _friends.removeWhere((_, f) => f.visibleUserId == visibleUserId);
       notifyListeners();
       return true;
     }
@@ -517,6 +579,7 @@ class DataProvider extends ChangeNotifier {
     _outgoingRequests.clear();
     _conversations.clear();
     _servers.clear();
+    _users.clear();
     _messages.clear();
     _unreadConversations.clear();
     _isInitialized = false;

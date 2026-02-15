@@ -3,8 +3,8 @@ import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/helpers/isMobile.dart';
 import 'package:hindsightchat/mixins/SidebarMixin.dart';
 import 'package:hindsightchat/pages/main/ConversationPage.dart';
+import 'package:hindsightchat/pages/main/FriendsSidePage.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
-import 'package:hindsightchat/services/websocket_service.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
 
@@ -56,17 +56,17 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
           children: [
             SidebarNavItem(
               icon: Icons.people,
-              label: 'All Friends',
+              label: 'friends',
               isSelected: _pageState.selectedConversationId == null,
               onSelect: () => _pageState.selectConversation(null),
-              mobilePageBuilder: (_) => const _FriendsPage(),
+              mobilePageBuilder: (_) => const FriendsPage(),
             ),
             SidebarNavItem(
-              icon: Icons.people,
-              label: 'Message requests',
+              icon: Icons.mail,
+              label: 'message requests',
               isSelected: _pageState.selectedConversationId == null,
               onSelect: () => _pageState.selectConversation(null),
-              mobilePageBuilder: (_) => const _FriendsPage(),
+              mobilePageBuilder: (_) => const FriendsPage(),
             ),
             const SizedBox(height: 16),
             const SidebarSection(title: 'Direct Messages'),
@@ -106,15 +106,12 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
         return Container(
           width: double.infinity,
           height: double.infinity,
-          padding: const EdgeInsets.only(right: 20),
+
           child: Container(
             decoration: BoxDecoration(
               color: MessageBackgroundColor,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(30),
-              ),
               border: Border(
-                right: BorderSide(color: MessageBorderColor, width: 1),
+                left: BorderSide(color: MessageBorderColor, width: 1),
                 top: BorderSide(color: MessageBorderColor, width: 1),
               ),
             ),
@@ -123,7 +120,7 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
                     key: ValueKey(_pageState.selectedConversationId),
                     conversationId: _pageState.selectedConversationId!,
                   )
-                : const _FriendsPage(),
+                : const FriendsPage(),
           ),
         );
       },
@@ -156,6 +153,19 @@ class _ConversationSidebarItemState extends State<_ConversationSidebarItem> {
 
   @override
   Widget build(BuildContext context) {
+    DataProvider dataProvider = Provider.of<DataProvider>(
+      context,
+      listen: true,
+    );
+
+    // if not group, get participents status
+    String status = "offline";
+    if (!widget.convo.isGroup && widget.convo.participants.isNotEmpty) {
+      final otherUserId = widget.convo.participants.first.id;
+      final otherUser = dataProvider.getUser(otherUserId);
+      status = otherUser?.presence?.status ?? 'offline';
+    }
+
     final label = widget.convo.isGroup
         ? widget.convo.name ?? 'Group Chat'
         : widget.convo.participants.isNotEmpty
@@ -188,19 +198,40 @@ class _ConversationSidebarItemState extends State<_ConversationSidebarItem> {
           ),
           child: Row(
             children: [
-              // Icon(
-              //   Icons.account_circle,
-              //   size: 20,
-              //   color: widget.isSelected || _isHovered
-              //       ? const Color(0xFFDBDEE1)
-              //       : const Color(0xFF949BA4),
-              // ),
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(
-                  "https://github.com/DwifteJB.png",
-                ),
+              Stack(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(40),
+
+                      image: const DecorationImage(
+                        image: NetworkImage("https://github.com/DwifteJB.png"),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  if (status != 'offline')
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: MainAccessColor(status),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: MessageBackgroundColor,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
+
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -218,224 +249,6 @@ class _ConversationSidebarItemState extends State<_ConversationSidebarItem> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FriendsPage extends StatelessWidget {
-  const _FriendsPage();
-
-  @override
-  Widget build(BuildContext context) {
-    final dataProvider = context.watch<DataProvider>();
-
-    // Separate online and offline friends
-    final onlineFriends = dataProvider.friends
-        .where((f) => f.user.isOnline)
-        .toList();
-    final offlineFriends = dataProvider.friends
-        .where((f) => f.user.isOffline)
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Title bar
-        Container(
-          height: 60,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: MessageBackgroundColor,
-            border: Border(
-              bottom: BorderSide(color: MessageBorderColor, width: 1),
-            ),
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(30),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.centerLeft,
-          child: const Row(
-            children: [
-              Icon(Icons.people, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Friends',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Friends list
-        Expanded(
-          child: dataProvider.friends.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No friends yet',
-                    style: TextStyle(color: Color(0xFF949BA4)),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (onlineFriends.isNotEmpty) ...[
-                      Text(
-                        'ONLINE - ${onlineFriends.length}',
-                        style: const TextStyle(
-                          color: Color(0xFF949BA4),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final friend in onlineFriends)
-                        _FriendItem(friend: friend),
-                      const SizedBox(height: 16),
-                    ],
-                    if (offlineFriends.isNotEmpty) ...[
-                      Text(
-                        'OFFLINE - ${offlineFriends.length}',
-                        style: const TextStyle(
-                          color: Color(0xFF949BA4),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final friend in offlineFriends)
-                        _FriendItem(friend: friend),
-                    ],
-                  ],
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FriendItem extends StatelessWidget {
-  final Friendship friend;
-
-  const _FriendItem({required this.friend});
-
-  @override
-  Widget build(BuildContext context) {
-    final isOnline = friend.user.isOnline;
-    final activity = friend.user.presence?.activity;
-
-    // Status indicator color
-    Color statusColor;
-    switch (friend.user.presence?.status) {
-      case 'online':
-        statusColor = const Color(0xFF3BA55C); // Green
-        break;
-      case 'idle':
-        statusColor = const Color(0xFFFAA61A); // Yellow/Orange
-        break;
-      case 'dnd':
-        statusColor = const Color(0xFFED4245); // Red
-        break;
-      default:
-        statusColor = const Color(0xFF747F8D); // Gray (offline)
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      margin: const EdgeInsets.only(bottom: 4),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-      child: Row(
-        children: [
-          // Avatar with status indicator
-          Stack(
-            children: [
-              // Container(
-              //   width: 40,
-              //   height: 40,
-              //   decoration: BoxDecoration(
-              //     borderRadius: BorderRadius.circular(20),
-              //     color: const Color(0xFF5865F2),
-              //   ),
-              //   child: Center(
-              //     child: Text(
-              //       friend.user.username.isNotEmpty
-              //           ? friend.user.username[0].toUpperCase()
-              //           : '?',
-              //       style: const TextStyle(
-              //         color: Colors.white,
-              //         fontWeight: FontWeight.w600,
-              //       ),
-              //     ),
-              //   ),
-              // ),
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(
-                  friend.user.profilePicURL.isNotEmpty
-                      ? friend.user.profilePicURL
-                      : "https://github.com/DwifteJB.png",
-                ),
-              ),
-              // Status indicator
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: MessageBackgroundColor, width: 3),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Name and status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  friend.user.username,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (activity != null && activity.hasActivity)
-                  Text(
-                    activity.details.isNotEmpty
-                        ? activity.details
-                        : activity.state,
-                    style: const TextStyle(
-                      color: Color(0xFF949BA4),
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )
-                else
-                  Text(
-                    isOnline ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      color: isOnline
-                          ? const Color(0xFF3BA55C)
-                          : const Color(0xFF949BA4),
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -56,9 +56,9 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> with WindowListener {
       height: 32,
       decoration: BoxDecoration(
         color: DarkBackgroundColor,
-        border: Border(
-          bottom: BorderSide(color: theme.colors.border, width: 1),
-        ),
+        // border: Border(
+        //   bottom: BorderSide(color: theme.colors.border, width: 1),
+        // ),
       ),
       child: Stack(
         children: [

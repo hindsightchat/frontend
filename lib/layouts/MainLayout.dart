@@ -243,7 +243,6 @@ class MobileContentSidebar extends StatelessWidget {
           left: BorderSide(color: MessageBorderColor, width: 1),
           top: BorderSide(color: MessageBorderColor, width: 1),
         ),
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(10)),
       ),
       child: Column(
         children: [
