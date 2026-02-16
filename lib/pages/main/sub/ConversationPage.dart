@@ -501,7 +501,7 @@ class ConversationPageState extends State<ConversationPage> {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends StatefulWidget {
   final DirectMessage message;
   final bool showAvatar;
   final bool isFirst;
@@ -513,64 +513,87 @@ class _MessageBubble extends StatelessWidget {
   });
 
   @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        top: isFirst ? 0 : (showAvatar ? 16 : 4),
+        top: widget.isFirst ? 0 : (widget.showAvatar ? 16 : 4),
         left: 52,
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          if (showAvatar)
-            Positioned(
-              left: -52,
-              top: 0,
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.transparent,
-                backgroundImage: NetworkImage(
-                  "https://github.com/DwifteJB.png",
-                ),
-              ),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 0),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (showAvatar)
-                Row(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (widget.showAvatar)
+                  Positioned(
+                    left: -52,
+                    top: 0,
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.transparent,
+                      backgroundImage: NetworkImage(
+                        "https://github.com/DwifteJB.png",
+                      ),
+                    ),
+                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      message.author.username,
+                    if (widget.showAvatar)
+                      Row(
+                        children: [
+                          Text(
+                            widget.message.author.username,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 14,
+                              fontFamily: "Inter",
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatTime(widget.message.createdAt),
+                            style: const TextStyle(
+                              color: Color(0xFF767676),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      widget.message.content,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w400,
+                        color: Color(0xFFDBDEE1),
                         fontSize: 14,
                         fontFamily: "Inter",
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatTime(message.createdAt),
-                      style: const TextStyle(
-                        color: Color(0xFF767676),
-                        fontSize: 10,
-                      ),
-                    ),
                   ],
                 ),
-              const SizedBox(height: 4),
-              Text(
-                message.content,
-                style: const TextStyle(
-                  color: Color(0xFFDBDEE1),
-                  fontSize: 14,
-                  fontFamily: "Inter",
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

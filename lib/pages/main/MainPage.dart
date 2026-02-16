@@ -64,20 +64,16 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
     super.dispose();
   }
 
-  List<Conversation> get SortedConversations {
+  @override
+  Widget? buildSidebar(BuildContext context) {
     final dataProvider = context.watch<DataProvider>();
+
     final conversations = dataProvider.conversations;
     conversations.sort((a, b) {
       final aLast = a.lastReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final bLast = b.lastReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bLast.compareTo(aLast);
     });
-    return conversations;
-  }
-
-  @override
-  Widget? buildSidebar(BuildContext context) {
-    final dataProvider = context.watch<DataProvider>();
 
     return ListenableBuilder(
       listenable: _pageState,
@@ -117,7 +113,7 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
                 }
               },
             ),
-            for (final convo in SortedConversations)
+            for (final convo in conversations)
               _ConversationSidebarItem(
                 convo: convo,
                 isSelected:

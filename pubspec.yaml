@@ -21,6 +21,7 @@ dependencies:
   dart_ipc: ^1.0.1
   window_manager: ^0.5.1
   blur: ^4.0.2
+  tray_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

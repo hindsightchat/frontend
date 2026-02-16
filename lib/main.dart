@@ -14,12 +14,17 @@ import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/providers/SidebarProvider.dart';
 import 'package:hindsightchat/providers/MobileNavigationProvider.dart';
-import 'package:hindsightchat/services/rpc_process_manager.dart';
 import 'package:provider/provider.dart';
+import 'package:tray_manager/tray_manager.dart';
 
 // window
 import 'package:window_manager/window_manager.dart';
 import 'package:hindsightchat/components/DesktopTitlebar.dart';
+
+// window manager or stub
+import 'package:hindsightchat/components/WindowManager/WindowManager.dart'
+    if (dart.library.js_interop) 'package:hindsightchat/components/WindowManager/WindowManager-stub.dart'
+    as WindowManagerComponent;
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -54,6 +59,17 @@ void main() async {
 
   if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     await windowManager.ensureInitialized();
+
+    await trayManager.setIcon(Platform.isWindows ? 'assets/app_icon.ico' : 'assets/logo.png');
+
+    Menu menu = Menu(
+      items: [
+        MenuItem(key: 'show', label: 'Show'),
+        MenuItem(key: 'exit', label: 'Exit'),
+      ],
+    );
+
+    await trayManager.setContextMenu(menu);
 
     WindowOptions windowOptions = WindowOptions(
       size: Size(1280, 720),
@@ -94,14 +110,12 @@ class AppWrapper extends StatefulWidget {
   State<AppWrapper> createState() => _AppWrapperState();
 }
 
-class _AppWrapperState extends State<AppWrapper> with WindowListener {
+class _AppWrapperState extends State<AppWrapper> {
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-
-    windowManager.addListener(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -120,31 +134,7 @@ class _AppWrapperState extends State<AppWrapper> with WindowListener {
   }
 
   @override
-  void onWindowClose() async {
-    DataProvider dataProvider = Provider.of<DataProvider>(
-      context,
-      listen: false,
-    );
-
-    AuthProvider authProvider = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    );
-
-    dataProvider.dispose(); // force cleanup of data provider
-    authProvider.dispose(); // force cleanup of auth provider
-    KillRPCProcess(); // ensure rpc process is killed on app exit
-
-    // hide window immediately to prevent user from interacting with app while cleanup is happening
-    await windowManager.hide();
-
-    // then allow window to close
-    await windowManager.destroy();
-  }
-
-  @override
   void dispose() {
-    windowManager.removeListener(this);
     super.dispose();
   }
 
@@ -199,23 +189,25 @@ class Application extends StatelessWidget {
             ),
           ),
           builder: (_, child) => AppWrapper(
-            child: Material(
-              child: FAnimatedTheme(
-                data: theme,
-                child: _isDesktop
-                    ? Overlay(
-                        initialEntries: [
-                          OverlayEntry(
-                            builder: (context) => Column(
-                              children: [
-                                const DesktopTitlebar(),
-                                Expanded(child: child!),
-                              ],
+            child: WindowManagerComponent.WindowManager(
+              child: Material(
+                child: FAnimatedTheme(
+                  data: theme,
+                  child: _isDesktop
+                      ? Overlay(
+                          initialEntries: [
+                            OverlayEntry(
+                              builder: (context) => Column(
+                                children: [
+                                  const DesktopTitlebar(),
+                                  Expanded(child: child!),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    : child!,
+                          ],
+                        )
+                      : child!,
+                ),
               ),
             ),
           ),
