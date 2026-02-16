@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:hindsightchat/components/Colours.dart';
@@ -58,6 +60,31 @@ class _DesktopLayout extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [const ServerSidebar(), const ContentSidebar()],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                  ),
+                  // blurred background for user panel using backdrop filter
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                    child: Container(
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: MessageSendBoxColor.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
               const Positioned(
                 left: 0,

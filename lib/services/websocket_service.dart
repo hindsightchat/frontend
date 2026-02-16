@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:hindsightchat/constants.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:hindsightchat/types/websocket/websocket-types.dart';
@@ -35,10 +36,6 @@ class WebSocketService {
   factory WebSocketService() => _instance;
   WebSocketService._internal();
 
-  static const String _wsUrl = kDebugMode
-      ? 'ws://localhost:3000/ws'
-      : 'wss://chat.robbiem.dev/ws';
-
   WebSocketChannel? _channel;
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
@@ -70,8 +67,8 @@ class WebSocketService {
     _isConnecting = true;
 
     try {
-      debugPrint('[ws] connecting to $_wsUrl');
-      _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+      debugPrint('[ws] connecting to ${Constants().WS_URL}');
+      _channel = WebSocketChannel.connect(Uri.parse(Constants().WS_URL));
 
       await _channel!.ready;
       debugPrint('[ws] connection ready, sending identify');

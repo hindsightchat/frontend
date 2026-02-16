@@ -51,7 +51,7 @@ void main() async {
 
     WindowOptions windowOptions = WindowOptions(
       size: Size(1280, 720),
-      minimumSize: Size(100, 100),
+      minimumSize: Size(500, 500),
       center: true,
       backgroundColor: DarkBackgroundColor,
       skipTaskbar: false,
@@ -61,6 +61,7 @@ void main() async {
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
+      await windowManager.setPreventClose(true);
     });
   }
   runApp(const Application());
@@ -95,7 +96,6 @@ class _AppWrapperState extends State<AppWrapper> with WindowListener {
     super.initState();
 
     windowManager.addListener(this);
-    windowManager.setPreventClose(true); // prevent close until we can cleanup
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

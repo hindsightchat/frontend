@@ -404,7 +404,10 @@ class DataProvider extends ChangeNotifier {
   void _notifyAndScheduleFrame() {
     notifyListeners();
     // force schedule frame to ensure UI updates even when app is unfocused (e.g. for presence updates)
-    WidgetsBinding.instance.scheduleFrame();
+    // only on desktop - on web this causes issues with text input DOM elements
+    if (!kIsWeb) {
+      WidgetsBinding.instance.scheduleFrame();
+    }
   }
 
   void _onFriendRequestCreate(Map<String, dynamic> data) {

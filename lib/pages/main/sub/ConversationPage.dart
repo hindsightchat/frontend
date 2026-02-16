@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/components/Conversations/UserSidebar.dart';
@@ -10,15 +11,20 @@ import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
 
 class ConversationPage extends StatefulWidget {
-  final String conversationId;
+  String conversationId;
+  String serverId;
 
-  const ConversationPage({super.key, required this.conversationId});
+  ConversationPage({super.key, this.conversationId = "", this.serverId = ""});
 
   @override
   State<ConversationPage> createState() => ConversationPageState();
 }
 
 class ConversationPageState extends State<ConversationPage> {
+  late int type = widget.conversationId == ""
+      ? 1
+      : 0; // 0 = conversation, 1 = server
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -27,6 +33,7 @@ class ConversationPageState extends State<ConversationPage> {
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _previousMessageCount = 0;
+  bool _scrollPending = false;
 
   // typing state
   Timer? _typingTimer;
@@ -41,7 +48,11 @@ class ConversationPageState extends State<ConversationPage> {
   @override
   void initState() {
     super.initState();
-    ws.setFocus(conversationId: widget.conversationId);
+    if (widget.conversationId.isEmpty) {
+      ws.setFocus(serverId: widget.serverId);
+    } else {
+      ws.setFocus(conversationId: widget.conversationId);
+    }
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
     _loadMessages();
@@ -70,7 +81,11 @@ class ConversationPageState extends State<ConversationPage> {
     // send typing start if we haven't sent one recently
     if (_lastTypingSent == null ||
         now.difference(_lastTypingSent!) > _typingThrottle) {
-      ws.startTyping(conversationId: widget.conversationId);
+      if (type == 0) {
+        ws.startTyping(conversationId: widget.conversationId);
+      } else {
+        ws.startTyping(serverId: widget.serverId);
+      }
       _lastTypingSent = now;
     }
 
@@ -83,7 +98,11 @@ class ConversationPageState extends State<ConversationPage> {
     _typingTimer?.cancel();
     _typingTimer = null;
     if (_lastTypingSent != null) {
-      ws.stopTyping(conversationId: widget.conversationId);
+      if (type == 0) {
+        ws.stopTyping(conversationId: widget.conversationId);
+      } else {
+        ws.stopTyping(serverId: widget.serverId);
+      }
       _lastTypingSent = null;
     }
   }
@@ -127,6 +146,7 @@ class ConversationPageState extends State<ConversationPage> {
         _scrollController.position.maxScrollExtent -
         _scrollController.position.pixels;
 
+
     final newMessages = await dataProvider.loadMessages(
       widget.conversationId,
       limit: 50,
@@ -148,8 +168,8 @@ class ConversationPageState extends State<ConversationPage> {
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void _scrollToBottom({bool immediate = false}) {
+    void doScroll() {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -157,23 +177,49 @@ class ConversationPageState extends State<ConversationPage> {
           curve: Curves.easeOut,
         );
       }
-    });
+    }
+
+    if (immediate) {
+      doScroll();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => doScroll());
+    }
   }
 
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty || _isSending) return;
 
-    setState(() => _isSending = true);
-    _messageController.clear();
+    // on web, defer the entire operation to avoid DOM text input conflicts
+    if (kIsWeb) {
+      Future.microtask(() => _doSendMessage(content));
+    } else {
+      _doSendMessage(content);
+    }
+  }
+
+  Future<void> _doSendMessage(String content) async {
+    if (_isSending) return;
+
+    try {
+      _messageController.clear();
+    } catch (e) {
+      debugPrint('Failed to clear message input: $e');
+    }
+
     _stopTyping();
+
+    // idk why web is so ass about this
+    if (!kIsWeb) {
+      setState(() => _isSending = true);
+    }
 
     try {
       await ws.sendMessage(
         conversationId: widget.conversationId,
         content: content,
       );
-      _scrollToBottom();
+      // _scrollToBottom();
     } catch (e) {
       debugPrint('Failed to send message: $e');
     } finally {
@@ -199,18 +245,23 @@ class ConversationPageState extends State<ConversationPage> {
 
     if (messages.length > _previousMessageCount &&
         _previousMessageCount > 0 &&
-        !_isLoading) {
-      if (_isNearBottom()) {
-        _scrollToBottom();
-      }
+        !_isLoading &&
+        !_scrollPending) {
+      _scrollPending = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollPending = false;
+        if (mounted && _isNearBottom()) {
+          _scrollToBottom(immediate: true);
+        }
+      });
     }
     _previousMessageCount = messages.length;
 
-    // log all renders
-    String Time = DateTime.now().toIso8601String();
-    debugPrint(
-      '[$Time]Rendering ConversationPage: conversationId=${widget.conversationId}, messages=${messages.length}, isLoading=$_isLoading, isSending=$_isSending, isLoadingMore=$_isLoadingMore',
-    );
+    // // log all renders
+    // String Time = DateTime.now().toIso8601String();
+    // debugPrint(
+    //   '[$Time] Rendering ConversationPage: conversationId=${widget.conversationId}, messages=${messages.length}, isLoading=$_isLoading, isSending=$_isSending, isLoadingMore=$_isLoadingMore',
+    // );
 
     if (conversation == null) {
       return const Center(

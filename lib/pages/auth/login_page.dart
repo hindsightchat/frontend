@@ -59,6 +59,15 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
+    if (auth.isAuthenticated) {
+      // show empty scaffold while redirecting to avoid showing login page for a split second
+      return const Scaffold();
+    }
+
+    if (auth.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: Center(
         child: Container(

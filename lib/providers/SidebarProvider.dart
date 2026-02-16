@@ -8,7 +8,11 @@ class SidebarProvider extends ChangeNotifier {
   SidebarBuilder? get sidebarBuilder => _sidebarBuilder;
 
   void setSidebar(SidebarBuilder? builder) {
-    _sidebarBuilder = builder;
+    if (builder == null) {
+      _sidebarBuilder = null;
+    } else {
+      _sidebarBuilder = builder;
+    }
     notifyListeners();
   }
 
