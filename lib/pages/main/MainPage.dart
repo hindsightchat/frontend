@@ -242,7 +242,7 @@ class _ConversationSidebarItemState extends State<_ConversationSidebarItem> {
                       ),
                     ),
                   ),
-                  if (status != 'offline')
+                  if (!widget.convo.isGroup)
                     Positioned(
                       right: 0,
                       bottom: 0,
