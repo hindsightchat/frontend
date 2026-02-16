@@ -39,12 +39,27 @@ func main() {
 			// No client ID means no presence, skip sending
 			return
 		}
-		fmt.Printf("Received presence update: %+v\n", update)
+		processName := listener.GetProcessName(update.PID)
+
+		// strip anything that is after the . (e.g .exe or .appimage)
+		// this is because some games have the same name but different extensions
+		if dotIndex := len(processName) - 1; dotIndex >= 0 {
+			for i := len(processName) - 1; i >= 0; i-- {
+				if processName[i] == '.' {
+					dotIndex = i
+					break
+				}
+			}
+			processName = processName[:dotIndex]
+		}
+
+		fmt.Printf("Received presence update from %s (PID: %d): %+v\n", processName, update.PID, update)
 		if oldPresenceUpdate.ClientID == update.ClientID && oldPresenceUpdate.Activity == update.Activity {
 			// No change in presence, skip sending
 			return
 		}
 		oldPresenceUpdate = update
+
 		formattedActivity := listener.Activity{
 			Details:    update.Activity.Details,
 			State:      update.Activity.State,
@@ -54,6 +69,7 @@ func main() {
 			SmallImage: update.Activity.Assets.SmallImage,
 			StartTime:  update.Activity.Timestamps.Start,
 			EndTime:    update.Activity.Timestamps.End,
+			AppName:    processName,
 		}
 
 		if err := client.SendActivity(formattedActivity); err != nil {

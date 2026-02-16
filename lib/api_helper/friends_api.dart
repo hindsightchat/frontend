@@ -6,7 +6,8 @@ class FriendsApi {
   final ApiHelper _api;
 
   FriendsApi(this._api);
-  factory FriendsApi.withToken(String? token) => FriendsApi(ApiHelper(token: token));
+  factory FriendsApi.withToken(String? token) =>
+      FriendsApi(ApiHelper(token: token));
 
   Future<ApiResponse<List<Friendship>>> getFriends() async {
     final response = await _api.get<List<dynamic>>('/friends');
@@ -14,9 +15,17 @@ class FriendsApi {
       final friends = response.data!
           .map((e) => Friendship.fromJson(e as Map<String, dynamic>))
           .toList();
-      return ApiResponse(success: true, data: friends, statusCode: response.statusCode);
+      return ApiResponse(
+        success: true,
+        data: friends,
+        statusCode: response.statusCode,
+      );
     }
-    return ApiResponse(success: false, error: response.error, statusCode: response.statusCode);
+    return ApiResponse(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
   }
 
   Future<ApiResponse<List<FriendRequest>>> getPendingRequests() async {
@@ -25,23 +34,44 @@ class FriendsApi {
       final requests = response.data!
           .map((e) => FriendRequest.fromJson(e as Map<String, dynamic>))
           .toList();
-      return ApiResponse(success: true, data: requests, statusCode: response.statusCode);
+      return ApiResponse(
+        success: true,
+        data: requests,
+        statusCode: response.statusCode,
+      );
     }
-    return ApiResponse(success: false, error: response.error, statusCode: response.statusCode);
+    return ApiResponse(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
   }
 
   Future<ApiResponse<List<FriendRequest>>> getOutgoingRequests() async {
-    final response = await _api.get<List<dynamic>>('/friends/requests/outgoing');
+    final response = await _api.get<List<dynamic>>(
+      '/friends/requests/outgoing',
+    );
     if (response.isSuccess && response.data != null) {
       final requests = response.data!
           .map((e) => FriendRequest.fromJson(e as Map<String, dynamic>))
           .toList();
-      return ApiResponse(success: true, data: requests, statusCode: response.statusCode);
+      return ApiResponse(
+        success: true,
+        data: requests,
+        statusCode: response.statusCode,
+      );
     }
-    return ApiResponse(success: false, error: response.error, statusCode: response.statusCode);
+    return ApiResponse(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
   }
 
-  Future<ApiResponse<FriendRequest>> sendRequest({String? userId, String? username}) {
+  Future<ApiResponse<FriendRequest>> sendRequest({
+    String? userId,
+    String? username,
+  }) {
     return _api.post<FriendRequest>(
       '/friends/requests',
       body: {

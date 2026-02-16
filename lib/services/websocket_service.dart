@@ -37,7 +37,7 @@ class WebSocketService {
 
   static const String _wsUrl = kDebugMode
       ? 'ws://localhost:3000/ws'
-      : 'wss://api.hindsight.chat/ws';
+      : 'wss://chat.robbiem.dev/ws';
 
   WebSocketChannel? _channel;
   Timer? _heartbeatTimer;
@@ -149,7 +149,8 @@ class WebSocketService {
       if (callbacks != null && msg.data != null) {
         final data = msg.data as Map<String, dynamic>;
         for (final cb in callbacks.toList()) {
-          cb(data);
+          // Schedule on microtask to ensure Flutter's event loop processes UI updates
+          Future.microtask(() => cb(data));
         }
       }
     } catch (e) {

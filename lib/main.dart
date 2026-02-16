@@ -13,6 +13,7 @@ import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/providers/SidebarProvider.dart';
 import 'package:hindsightchat/providers/MobileNavigationProvider.dart';
+import 'package:hindsightchat/services/rpc_process_manager.dart';
 import 'package:provider/provider.dart';
 
 // window
@@ -28,13 +29,13 @@ final _router = GoRouter(
   routes: [
     ShellRoute(
       routes: [
-        GoRoute(path: '/', builder: (context, state) => const MainPage()),
+        GoRoute(path: '/dash', builder: (context, state) => const MainPage()),
       ],
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) => MainLayout(child: child),
     ),
 
-    GoRoute(path: "/login", builder: (context, state) => LoginPage()),
+    GoRoute(path: "/", builder: (context, state) => LoginPage()),
   ],
 );
 
@@ -86,11 +87,15 @@ class AppWrapper extends StatefulWidget {
   State<AppWrapper> createState() => _AppWrapperState();
 }
 
-class _AppWrapperState extends State<AppWrapper> {
+class _AppWrapperState extends State<AppWrapper> with WindowListener {
   bool _isInitialized = false;
+
   @override
   void initState() {
     super.initState();
+
+    windowManager.addListener(this);
+    windowManager.setPreventClose(true); // prevent close until we can cleanup
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -100,13 +105,41 @@ class _AppWrapperState extends State<AppWrapper> {
 
       // wait until authProvider.isLoading is false, then set _isInitialized to true
 
-      Future.doWhile(() async {
-        await Future.delayed(Duration(milliseconds: 100));
-        return authProvider.isLoading;
-      }).then((_) {
-        setState(() => _isInitialized = true);
+      authProvider.addListener(() {
+        if (!authProvider.isLoading && mounted) {
+          setState(() => _isInitialized = true);
+        }
       });
     });
+  }
+
+  @override
+  void onWindowClose() async {
+    DataProvider dataProvider = Provider.of<DataProvider>(
+      context,
+      listen: false,
+    );
+
+    AuthProvider authProvider = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
+
+    dataProvider.dispose(); // force cleanup of data provider
+    authProvider.dispose(); // force cleanup of auth provider
+    KillRPCProcess(); // ensure rpc process is killed on app exit
+
+    // hide window immediately to prevent user from interacting with app while cleanup is happening
+    await windowManager.hide();
+
+    // then allow window to close
+    await windowManager.destroy();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
   }
 
   @override

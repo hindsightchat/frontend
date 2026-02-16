@@ -6,7 +6,8 @@ class UsersApi {
   final ApiHelper _api;
 
   UsersApi(this._api);
-  factory UsersApi.withToken(String? token) => UsersApi(ApiHelper(token: token));
+  factory UsersApi.withToken(String? token) =>
+      UsersApi(ApiHelper(token: token));
 
   Future<ApiResponse<List<Conversation>>> getConversations() async {
     final response = await _api.get<List<dynamic>>('/users/@me/conversations');
@@ -14,9 +15,17 @@ class UsersApi {
       final conversations = response.data!
           .map((e) => Conversation.fromJson(e as Map<String, dynamic>))
           .toList();
-      return ApiResponse(success: true, data: conversations, statusCode: response.statusCode);
+      return ApiResponse(
+        success: true,
+        data: conversations,
+        statusCode: response.statusCode,
+      );
     }
-    return ApiResponse(success: false, error: response.error, statusCode: response.statusCode);
+    return ApiResponse(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
   }
 
   Future<ApiResponse<List<Server>>> getServers() async {
@@ -25,8 +34,16 @@ class UsersApi {
       final servers = response.data!
           .map((e) => Server.fromJson(e as Map<String, dynamic>))
           .toList();
-      return ApiResponse(success: true, data: servers, statusCode: response.statusCode);
+      return ApiResponse(
+        success: true,
+        data: servers,
+        statusCode: response.statusCode,
+      );
     }
-    return ApiResponse(success: false, error: response.error, statusCode: response.statusCode);
+    return ApiResponse(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
   }
 }

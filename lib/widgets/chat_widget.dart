@@ -57,7 +57,10 @@ class _ChatWidgetState extends State<ChatWidget> with WebSocketMixin {
     _controller.clear();
     ws.stopTyping(conversationId: widget.conversationId);
 
-    await ws.sendMessage(conversationId: widget.conversationId, content: content);
+    await ws.sendMessage(
+      conversationId: widget.conversationId,
+      content: content,
+    );
   }
 
   @override
@@ -88,7 +91,8 @@ class _ChatWidgetState extends State<ChatWidget> with WebSocketMixin {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  onChanged: (_) => ws.startTyping(conversationId: widget.conversationId),
+                  onChanged: (_) =>
+                      ws.startTyping(conversationId: widget.conversationId),
                   onSubmitted: (_) => _sendMessage(),
                   decoration: const InputDecoration(hintText: 'Message'),
                 ),

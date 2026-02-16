@@ -18,6 +18,17 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+    if (auth.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.go('/dash');
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -36,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (response.isSuccess) {
-      context.go('/');
+      context.go('/dash');
     } else {
       ScaffoldMessenger.of(
         context,

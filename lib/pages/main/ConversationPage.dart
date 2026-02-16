@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/components/Conversations/UserSidebar.dart';
@@ -19,29 +21,71 @@ class ConversationPage extends StatefulWidget {
 class ConversationPageState extends State<ConversationPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final FocusNode _focusNode = FocusNode();
 
   bool _isLoading = true;
   bool _isSending = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
+  int _previousMessageCount = 0;
+
+  // typing state
+  Timer? _typingTimer;
+  DateTime? _lastTypingSent;
+  static const _typingThrottle = Duration(
+    seconds: 4,
+  ); // resend typing every 4s while still typing
+  static const _typingTimeout = Duration(
+    seconds: 5,
+  ); // stop typing after 5s of inactivity
 
   @override
   void initState() {
     super.initState();
     ws.setFocus(conversationId: widget.conversationId);
     _scrollController.addListener(_onScroll);
+    _messageController.addListener(_onTextChanged);
     _loadMessages();
   }
 
   @override
   void dispose() {
     ws.clearFocus();
+    _stopTyping();
+    _typingTimer?.cancel();
+    _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (_messageController.text.isEmpty) {
+      _stopTyping();
+      return;
+    }
+
+    final now = DateTime.now();
+
+    // send typing start if we haven't sent one recently
+    if (_lastTypingSent == null ||
+        now.difference(_lastTypingSent!) > _typingThrottle) {
+      ws.startTyping(conversationId: widget.conversationId);
+      _lastTypingSent = now;
+    }
+
+    // reset the typing timeout timer
+    _typingTimer?.cancel();
+    _typingTimer = Timer(_typingTimeout, _stopTyping);
+  }
+
+  void _stopTyping() {
+    _typingTimer?.cancel();
+    _typingTimer = null;
+    if (_lastTypingSent != null) {
+      ws.stopTyping(conversationId: widget.conversationId);
+      _lastTypingSent = null;
+    }
   }
 
   void _onScroll() {
@@ -122,6 +166,7 @@ class ConversationPageState extends State<ConversationPage> {
 
     setState(() => _isSending = true);
     _messageController.clear();
+    _stopTyping();
 
     try {
       await ws.sendMessage(
@@ -134,9 +179,15 @@ class ConversationPageState extends State<ConversationPage> {
     } finally {
       if (mounted) {
         setState(() => _isSending = false);
-        _focusNode.requestFocus();
       }
     }
+  }
+
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    return (maxScroll - currentScroll) <= 150;
   }
 
   @override
@@ -145,6 +196,21 @@ class ConversationPageState extends State<ConversationPage> {
     final authProvider = context.watch<AuthProvider>();
     final conversation = dataProvider.getConversation(widget.conversationId);
     final messages = dataProvider.getMessages(widget.conversationId);
+
+    if (messages.length > _previousMessageCount &&
+        _previousMessageCount > 0 &&
+        !_isLoading) {
+      if (_isNearBottom()) {
+        _scrollToBottom();
+      }
+    }
+    _previousMessageCount = messages.length;
+
+    // log all renders
+    String Time = DateTime.now().toIso8601String();
+    debugPrint(
+      '[$Time]Rendering ConversationPage: conversationId=${widget.conversationId}, messages=${messages.length}, isLoading=$_isLoading, isSending=$_isSending, isLoadingMore=$_isLoadingMore',
+    );
 
     if (conversation == null) {
       return const Center(
@@ -292,6 +358,11 @@ class ConversationPageState extends State<ConversationPage> {
                         },
                       ),
               ),
+              // typing indicator
+              _TypingIndicator(
+                conversationId: widget.conversationId,
+                currentUserId: authProvider.user?.id ?? '',
+              ),
               Container(
                 padding: const EdgeInsets.all(16),
                 child: Container(
@@ -311,7 +382,9 @@ class ConversationPageState extends State<ConversationPage> {
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          focusNode: _focusNode,
+                          onEditingComplete: () =>
+                              {}, // keeps keyboard open on submit
+
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -325,7 +398,11 @@ class ConversationPageState extends State<ConversationPage> {
                               vertical: 12,
                             ),
                           ),
-                          onSubmitted: (_) => _sendMessage(),
+                          canRequestFocus: true,
+                          autofocus: true,
+                          onSubmitted: (_) => {_sendMessage()},
+                          textInputAction: TextInputAction
+                              .send, // show send button on keyboard
                           enabled: !_isSending,
                         ),
                       ),
@@ -443,12 +520,135 @@ class _MessageBubble extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(time);
 
-    if (diff.inDays == 0) {
-      return 'today at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    } else if (diff.inDays == 1) {
-      return 'yesterday at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    // if (diff.inDays == 0) {
+    //   return 'today at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    // } else if (diff.inDays == 1) {
+    //   return 'yesterday at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    // } else {
+    //   return '${time.day}/${time.month}/${time.year}';
+    // }
+
+    // previous implementation doesnt work when it goes past 00:00, new way!
+
+    if (diff.inSeconds < 60) {
+      return 'just now'; // e.g less than 1 min ago
+    } else if (diff.inMinutes < 60) {
+      return '${diff.inMinutes}m ago'; // e.g 5m ago, less than 1 hour
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago'; // e.g 3h ago, less than 1 day
     } else {
-      return '${time.day}/${time.month}/${time.year}';
+      // fallback to date for anything older than 1 day to: e.g 04:30 12/9
+      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} ${time.day}/${time.month} ';
     }
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  final String conversationId;
+  final String currentUserId;
+
+  const _TypingIndicator({
+    required this.conversationId,
+    required this.currentUserId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dataProvider = context.watch<DataProvider>();
+    final typingUserIds = dataProvider
+        .getTypingUsers(conversationId)
+        .where((id) => id != currentUserId)
+        .toList();
+
+    print(typingUserIds);
+
+    if (typingUserIds.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // get usernames for typing users
+    final typingNames = typingUserIds.map((id) {
+      final user = dataProvider.getUser(id);
+      return user?.username ?? 'Someone';
+    }).toList();
+
+    String text;
+    if (typingNames.length == 1) {
+      text = '${typingNames[0]} is typing...';
+    } else if (typingNames.length == 2) {
+      text = '${typingNames[0]} and ${typingNames[1]} are typing...';
+    } else {
+      text = 'Several people are typing...';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Row(
+        children: [
+          _TypingDots(),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: MutedTextColor,
+              fontSize: 12,
+              fontFamily: "Inter",
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final delay = index * 0.2;
+            final progress = (_controller.value + delay) % 1.0;
+            final opacity = (1.0 - (progress - 0.5).abs() * 2).clamp(0.3, 1.0);
+
+            return Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              decoration: BoxDecoration(
+                color: MutedTextColor.withOpacity(opacity),
+                shape: BoxShape.circle,
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 }

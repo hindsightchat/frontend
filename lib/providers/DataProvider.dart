@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hindsightchat/api_helper/friends_api.dart';
 import 'package:hindsightchat/api_helper/users_api.dart';
 import 'package:hindsightchat/api_helper/conversations_api.dart';
 import 'package:hindsightchat/api_helper/ApiHelper.dart';
+import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/services/websocket_service.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:hindsightchat/types/websocket/websocket-types.dart';
@@ -19,17 +20,20 @@ class DataProvider extends ChangeNotifier {
   final Map<String, FriendRequest> _outgoingRequests = {};
   final Map<String, Conversation> _conversations = {};
   final Map<String, Server> _servers = {};
-  
+
   // centralized user cache - tracks all users we interact with (friends, group members, server members)
   // receives presence updates for anyone in our conversations/servers
   final Map<String, UserBrief> _users = {};
-  
+
   // msgs per conversation
   final Map<String, List<DirectMessage>> _messages = {};
-  
+
   // conversations with unread messages
   // TODO: refactor to track unread message IDs instead of just conversation IDs for more granular control
   final Set<String> _unreadConversations = {};
+
+  // typing state: conversationId -> Map<userId, expiryTime>
+  final Map<String, Map<String, DateTime>> _typingUsers = {};
 
   IpcServer? _ipcServer;
   RpcProcessManager? _rpcProcess;
@@ -41,6 +45,7 @@ class DataProvider extends ChangeNotifier {
   String? _error;
   String? _token;
   Activity? _currentActivity;
+  String _currentStatus = 'online';
 
   List<Friendship> get friends => _friends.values.toList();
   List<FriendRequest> get incomingRequests => _incomingRequests.values.toList();
@@ -51,24 +56,42 @@ class DataProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   String? get error => _error;
   Activity? get currentActivity => _currentActivity;
+  String get currentStatus => _currentStatus;
   Friendship? getFriend(String id) => _friends[id];
-  Friendship? getFriendByUserId(String visibleUserId) =>
-      _friends.values.where((f) => f.visibleUserId == visibleUserId).firstOrNull;
+  Friendship? getFriendByUserId(String visibleUserId) => _friends.values
+      .where((f) => f.visibleUserId == visibleUserId)
+      .firstOrNull;
   Conversation? getConversation(String id) => _conversations[id];
   Server? getServer(String id) => _servers[id];
   UserBrief? getUser(String id) => _users[id];
-  
+
   // get the user data for a friendship (from users cache)
-  UserBrief? getFriendUser(Friendship friendship) => _users[friendship.visibleUserId];
-  
-  List<DirectMessage> getMessages(String conversationId) => _messages[conversationId] ?? [];
-  bool hasUnread(String conversationId) => _unreadConversations.contains(conversationId);
+  UserBrief? getFriendUser(Friendship friendship) =>
+      _users[friendship.visibleUserId];
+
+  List<DirectMessage> getMessages(String conversationId) =>
+      _messages[conversationId] ?? [];
+  bool hasUnread(String conversationId) =>
+      _unreadConversations.contains(conversationId);
   Set<String> get unreadConversations => _unreadConversations;
+
+  // get list of user IDs currently typing in a conversation (excludes expired)
+  List<String> getTypingUsers(String conversationId) {
+    final typing = _typingUsers[conversationId];
+    if (typing == null) return [];
+
+    final now = DateTime.now();
+    return typing.entries
+        .where((e) => e.value.isAfter(now))
+        .map((e) => e.key)
+        .toList();
+  }
 
   FriendsApi get _friendsApi => FriendsApi(ApiHelper(token: _token));
   UsersApi get _usersApi => UsersApi(ApiHelper(token: _token));
-  ConversationsApi get _conversationsApi => ConversationsApi(ApiHelper(token: _token));
-  
+  ConversationsApi get _conversationsApi =>
+      ConversationsApi(ApiHelper(token: _token));
+
   // helper to add/update user in cache (preserves existing presence if not provided)
   void _cacheUser(UserBrief user) {
     final existing = _users[user.id];
@@ -136,6 +159,7 @@ class DataProvider extends ChangeNotifier {
             state: activityData['state'] as String? ?? '',
             largeText: activityData['large_text'] as String? ?? '',
             smallText: activityData['small_text'] as String? ?? '',
+            AppName: activityData['app_name'] as String? ?? '',
           );
 
           _resetActivityTimeout();
@@ -147,7 +171,7 @@ class DataProvider extends ChangeNotifier {
           }
 
           _currentActivity = newActivity;
-          ws.updatePresence('online', activity: _currentActivity!);
+          ws.updatePresence(_currentStatus, activity: _currentActivity!);
           notifyListeners();
         }
         break;
@@ -167,17 +191,17 @@ class DataProvider extends ChangeNotifier {
     _activityTimeout = null;
     if (_currentActivity != null) {
       _currentActivity = null;
-      ws.updatePresence('online');
+      ws.updatePresence(_currentStatus);
       notifyListeners();
     }
   }
 
   StreamSubscription<Map<String, dynamic>>? _readySubscription;
-  
+
   void _subscribeToWebSocket() {
     // listen to READY event for initial user data
     _readySubscription = ws.readyStream.listen(_onReady);
-    
+
     ws.on(EventType.friendRequestCreate, _onFriendRequestCreate);
     ws.on(EventType.friendRequestAccepted, _onFriendRequestAccepted);
     ws.on(EventType.friendRemove, _onFriendRemove);
@@ -191,12 +215,14 @@ class DataProvider extends ChangeNotifier {
     ws.on(EventType.dmMessageCreate, _onDmMessageCreate);
     ws.on(EventType.dmMessageNotify, _onDmMessageNotify);
     ws.on(EventType.presenceUpdate, _onPresenceUpdate);
+    ws.on(EventType.typingStart, _onTypingStart);
+    ws.on(EventType.typingStop, _onTypingStop);
   }
 
   void _unsubscribeFromWebSocket() {
     _readySubscription?.cancel();
     _readySubscription = null;
-    
+
     ws.off(EventType.friendRequestCreate, _onFriendRequestCreate);
     ws.off(EventType.friendRequestAccepted, _onFriendRequestAccepted);
     ws.off(EventType.friendRemove, _onFriendRemove);
@@ -210,26 +236,40 @@ class DataProvider extends ChangeNotifier {
     ws.off(EventType.dmMessageCreate, _onDmMessageCreate);
     ws.off(EventType.dmMessageNotify, _onDmMessageNotify);
     ws.off(EventType.presenceUpdate, _onPresenceUpdate);
+    ws.off(EventType.typingStart, _onTypingStart);
+    ws.off(EventType.typingStop, _onTypingStop);
   }
-  
+
   void _onReady(Map<String, dynamic> data) {
+    // get saved status from READY payload
+    final status = data['status'] as String?;
+    if (status != null && status.isNotEmpty) {
+      _currentStatus = status;
+    } else {
+      // reset to default of online
+      _currentStatus = 'online';
+    }
+
     // populate users cache from READY payload
     final usersList = data['users'] as List<dynamic>?;
     if (usersList != null) {
       for (final userData in usersList) {
         final userMap = userData as Map<String, dynamic>;
         final presenceData = userMap['presence'] as Map<String, dynamic>?;
-        
+
         Presence? presence;
         if (presenceData != null) {
-          final activityData = presenceData['activity'] as Map<String, dynamic>?;
+          final activityData =
+              presenceData['activity'] as Map<String, dynamic>?;
           presence = Presence(
             status: presenceData['status'] as String? ?? 'offline',
-            activity: activityData != null ? Activity.fromJson(activityData) : null,
+            activity: activityData != null
+                ? Activity.fromJson(activityData)
+                : null,
             updatedAt: presenceData['updated_at'] as int? ?? 0,
           );
         }
-        
+
         final user = UserBrief(
           id: userMap['id'] as String? ?? '',
           username: userMap['username'] as String? ?? '',
@@ -237,13 +277,24 @@ class DataProvider extends ChangeNotifier {
           profilePicURL: userMap['profilePicURL'] as String? ?? '',
           presence: presence,
         );
-        
+
         _users[user.id] = user;
       }
-      _notifyAndScheduleFrame();
     }
+    _notifyAndScheduleFrame();
   }
 
+  // update status (online, idle, dnd, offline)
+  // contacts webhook and saves
+  void updateStatus(String status) {
+    if (!['online', 'idle', 'dnd', 'offline'].contains(status)) return;
+
+    _currentStatus = status;
+    ws.updatePresence(status, activity: _currentActivity);
+    notifyListeners();
+  }
+
+  // loads friends for init
   Future<void> _loadFriends() async {
     final response = await _friendsApi.getFriends();
     if (response.isSuccess && response.data != null) {
@@ -297,7 +348,7 @@ class DataProvider extends ChangeNotifier {
       }
     }
   }
-  
+
   Future<List<DirectMessage>> loadMessages(
     String conversationId, {
     int? limit,
@@ -312,7 +363,7 @@ class DataProvider extends ChangeNotifier {
       after: after,
       around: around,
     );
-    
+
     if (response.isSuccess && response.data != null) {
       if (before == null && after == null && around == null) {
         // init load - replace messages
@@ -329,16 +380,16 @@ class DataProvider extends ChangeNotifier {
       notifyListeners();
       return response.data!;
     }
-    
+
     return [];
   }
-  
+
   void markConversationRead(String conversationId) {
     if (_unreadConversations.remove(conversationId)) {
       notifyListeners();
     }
   }
-  
+
   void addMessage(String conversationId, DirectMessage message) {
     final messages = _messages[conversationId] ?? [];
     // check if message already exists
@@ -347,12 +398,13 @@ class DataProvider extends ChangeNotifier {
       _notifyAndScheduleFrame();
     }
   }
-  
+
   // notifies listeners and forces a frame to be scheduled
   // needed for desktop apps that don't repaint when idle/unfocused
   void _notifyAndScheduleFrame() {
     notifyListeners();
-    SchedulerBinding.instance.scheduleFrame();
+    // force schedule frame to ensure UI updates even when app is unfocused (e.g. for presence updates)
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   void _onFriendRequestCreate(Map<String, dynamic> data) {
@@ -368,10 +420,10 @@ class DataProvider extends ChangeNotifier {
 
     if (friendshipId != null && userData != null) {
       final user = UserBrief.fromJson(userData);
-      
+
       // cache the user
       _cacheUser(user);
-      
+
       final friendship = Friendship(
         id: friendshipId,
         visibleUserId: user.id,
@@ -442,47 +494,46 @@ class DataProvider extends ChangeNotifier {
         id: existingUser.id,
         username: fields['username'] as String? ?? existingUser.username,
         domain: fields['domain'] as String? ?? existingUser.domain,
-        profilePicURL: fields['profilePicURL'] as String? ?? existingUser.profilePicURL,
+        profilePicURL:
+            fields['profilePicURL'] as String? ?? existingUser.profilePicURL,
         presence: existingUser.presence,
       );
       _notifyAndScheduleFrame();
     }
   }
-  
+
   void _onDmMessageCreate(Map<String, dynamic> data) {
     // full message received (user has focus on this conversation)
     final conversationId = data['conversation_id'] as String?;
     if (conversationId == null) return;
-    
+
     final message = DirectMessage.fromJson(data);
     addMessage(conversationId, message);
   }
-  
+
   void _onDmMessageNotify(Map<String, dynamic> data) {
     // notif only (user doesn't have focus on this conversation)
     final conversationId = data['conversation_id'] as String?;
     if (conversationId == null) return;
-    
+
     _unreadConversations.add(conversationId);
     _notifyAndScheduleFrame();
   }
-  
+
   void _onPresenceUpdate(Map<String, dynamic> data) {
     final userId = data['user_id'] as String?;
     if (userId == null) return;
-    
+
     final status = data['status'] as String? ?? 'offline';
     final activityData = data['activity'] as Map<String, dynamic>?;
     final updatedAt = data['updated_at'] as int? ?? 0;
-    
+
     final newPresence = Presence(
       status: status,
-      activity: activityData != null 
-          ? Activity.fromJson(activityData) 
-          : null,
+      activity: activityData != null ? Activity.fromJson(activityData) : null,
       updatedAt: updatedAt,
     );
-    
+
     // update centralized user cache (single source of truth)
     final existingUser = _users[userId];
     if (existingUser != null) {
@@ -495,6 +546,53 @@ class DataProvider extends ChangeNotifier {
       );
       _notifyAndScheduleFrame();
     }
+  }
+
+  void _onTypingStart(Map<String, dynamic> data) {
+    final visibleUserId = data['user_id'] as String?;
+    final conversationId = data['conversation_id'] as String?;
+    if (visibleUserId == null || conversationId == null) return;
+
+    // set typing with 5 second TTL
+    _typingUsers.putIfAbsent(conversationId, () => {});
+    _typingUsers[conversationId]![visibleUserId] = DateTime.now().add(
+      const Duration(seconds: 5),
+    );
+    _notifyAndScheduleFrame();
+
+    // schedule cleanup after TTL
+    Future.delayed(const Duration(seconds: 5), () {
+      _cleanupExpiredTyping(conversationId);
+    });
+  }
+
+  void _onTypingStop(Map<String, dynamic> data) {
+    final visibleUserId = data['user_id'] as String?;
+    final conversationId = data['conversation_id'] as String?;
+    if (visibleUserId == null || conversationId == null) return;
+
+    _typingUsers[conversationId]?.remove(visibleUserId);
+    _notifyAndScheduleFrame();
+  }
+
+  void _cleanupExpiredTyping(String conversationId) {
+    final typing = _typingUsers[conversationId];
+    if (typing == null) return;
+
+    final now = DateTime.now();
+    typing.removeWhere((_, expiry) => expiry.isBefore(now));
+
+    if (typing.isEmpty) {
+      _typingUsers.remove(conversationId);
+    }
+
+    _notifyAndScheduleFrame();
+  }
+
+  // clear typing state when user sends a message
+  void clearTyping(String conversationId, String visibleUserId) {
+    _typingUsers[conversationId]?.remove(visibleUserId);
+    _notifyAndScheduleFrame();
   }
 
   Future<bool> sendFriendRequest({String? userId, String? username}) async {
@@ -582,11 +680,13 @@ class DataProvider extends ChangeNotifier {
     _users.clear();
     _messages.clear();
     _unreadConversations.clear();
+    _typingUsers.clear();
     _isInitialized = false;
     _isLoading = false;
     _error = null;
     _token = null;
     _currentActivity = null;
+    _currentStatus = 'online';
     notifyListeners();
   }
 

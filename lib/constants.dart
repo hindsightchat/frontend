@@ -1,9 +1,9 @@
 class Constants {
   static const DEV_API_URL = 'http://localhost:3000';
-  static const PROD_API_URL = 'https://api.hindsight.chat';
+  static const PROD_API_URL = 'https://chat.robbiem.dev';
 
-  static const DEV_WS_URL = 'ws://localhost:3000/websocket';
-  static const PROD_WS_URL = 'wss://api.hindsight.chat/websocket';
+  static const DEV_WS_URL = 'ws://localhost:3000/ws';
+  static const PROD_WS_URL = 'wss://chat.robbiem.dev/ws';
 
   String get API_URL {
     // means prod
@@ -22,5 +22,4 @@ class Constants {
       return DEV_WS_URL;
     }
   }
-
 }

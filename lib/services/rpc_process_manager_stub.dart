@@ -5,3 +5,5 @@ class RpcProcessManager {
   Future<void> stop() async {}
   void dispose() {}
 }
+
+void KillRPCProcess() {}

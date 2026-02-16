@@ -6,6 +6,7 @@ class AuthUser {
   final bool isDomainVerified;
   String profilePicURL = "";
   final String? token;
+  final String status; // saved status preference (online, idle, dnd)
 
   AuthUser({
     required this.id,
@@ -15,6 +16,7 @@ class AuthUser {
     required this.isDomainVerified,
     this.profilePicURL = "",
     this.token,
+    this.status = 'online',
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
@@ -25,6 +27,7 @@ class AuthUser {
     isDomainVerified: json['isDomainVerified'] as bool? ?? false,
     token: json['token'] as String?,
     profilePicURL: json['profilePicURL'] as String? ?? '',
+    status: json['status'] as String? ?? 'online',
   );
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +38,7 @@ class AuthUser {
     'isDomainVerified': isDomainVerified,
     if (token != null) 'token': token,
     'profilePicURL': profilePicURL,
+    'status': status,
   };
 
   AuthUser copyWith({
@@ -45,6 +49,7 @@ class AuthUser {
     bool? isDomainVerified,
     String? profilePicURL,
     String? token,
+    String? status,
   }) => AuthUser(
     id: id ?? this.id,
     username: username ?? this.username,
@@ -53,5 +58,6 @@ class AuthUser {
     isDomainVerified: isDomainVerified ?? this.isDomainVerified,
     token: token ?? this.token,
     profilePicURL: profilePicURL ?? this.profilePicURL,
+    status: status ?? this.status,
   );
 }

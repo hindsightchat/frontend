@@ -29,6 +29,7 @@ type Activity struct {
 	SmallImage string `json:"small_image,omitempty"`
 	StartTime  int64  `json:"start_time,omitempty"`
 	EndTime    int64  `json:"end_time,omitempty"`
+	AppName    string `json:"app_name,omitempty"`
 }
 
 func NewIpcClient(port int) *IpcClient {

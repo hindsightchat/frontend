@@ -95,8 +95,8 @@ class UserBrief {
 
 class Friendship {
   final String id;
-  final String visibleUserId;  // the other user in the friendship
-  final String visibleUsername;  // cached for display when user not in cache
+  final String visibleUserId; // the other user in the friendship
+  final String visibleUsername; // cached for display when user not in cache
   final String conversationId;
   final DateTime since;
 
@@ -116,7 +116,8 @@ class Friendship {
       visibleUserId: userData['id'] as String? ?? '',
       visibleUsername: userData['username'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
-      since: DateTime.tryParse(json['since'] as String? ?? '') ?? DateTime.now(),
+      since:
+          DateTime.tryParse(json['since'] as String? ?? '') ?? DateTime.now(),
     );
   }
 }

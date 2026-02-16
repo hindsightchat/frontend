@@ -10,7 +10,7 @@ class IpcServer {
   final List<Socket> _clients = [];
   final List<IpcMessageCallback> _listeners = [];
   bool _isRunning = false;
-  
+
   static const int defaultPort = 19542;
 
   bool get isRunning => _isRunning;
@@ -39,7 +39,9 @@ class IpcServer {
   }
 
   void _handleClient(Socket client) {
-    debugPrint('[ipc] client connected: ${client.remoteAddress.address}:${client.remotePort}');
+    debugPrint(
+      '[ipc] client connected: ${client.remoteAddress.address}:${client.remotePort}',
+    );
     _clients.add(client);
 
     final buffer = StringBuffer();
@@ -47,19 +49,19 @@ class IpcServer {
     client.listen(
       (data) {
         buffer.write(utf8.decode(data));
-        
+
         while (buffer.toString().contains('\n')) {
           final content = buffer.toString();
           final newlineIndex = content.indexOf('\n');
           final line = content.substring(0, newlineIndex);
           buffer.clear();
           buffer.write(content.substring(newlineIndex + 1));
-          
+
           if (line.isNotEmpty) {
             _processMessage(line);
           }
         }
-        
+
         final remaining = buffer.toString();
         if (remaining.isNotEmpty && !remaining.contains('\n')) {
           try {
@@ -81,7 +83,7 @@ class IpcServer {
 
   void _processMessage(String message) {
     debugPrint('[ipc] received: $message');
-    
+
     try {
       final json = jsonDecode(message) as Map<String, dynamic>;
       for (final listener in _listeners) {
@@ -103,7 +105,7 @@ class IpcServer {
   void broadcast(Map<String, dynamic> data) {
     final message = '${jsonEncode(data)}\n';
     final bytes = utf8.encode(message);
-    
+
     for (final client in _clients.toList()) {
       try {
         client.add(bytes);

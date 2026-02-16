@@ -12,7 +12,9 @@ mixin WebSocketMixin<T extends StatefulWidget> on State<T> {
 
   void unsubscribe(EventType event, EventCallback callback) {
     ws.off(event, callback);
-    _subscriptions.removeWhere((s) => s.event == event && s.callback == callback);
+    _subscriptions.removeWhere(
+      (s) => s.event == event && s.callback == callback,
+    );
   }
 
   @override

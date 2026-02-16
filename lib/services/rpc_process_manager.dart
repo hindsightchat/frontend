@@ -62,6 +62,7 @@ class RpcProcessManager {
 
     try {
       if (!Platform.isWindows) {
+        // ensure is executable
         await Process.run('chmod', ['+x', execPath]);
       }
 
@@ -112,6 +113,16 @@ class RpcProcessManager {
   }
 
   void dispose() {
+    // e.g. on app exit, ensure process is killed
     stop();
+  }
+}
+
+void KillRPCProcess() async {
+  // finds and kills any running rpc processes, used for cleanup on app exit
+  if (Platform.isWindows) {
+    Process.run('taskkill', ['/F', '/IM', 'rpc.exe']);
+  } else {
+    Process.run('pkill', ['-f', 'rpc']);
   }
 }
