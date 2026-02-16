@@ -21,9 +21,7 @@ class ConversationPage extends StatefulWidget {
 }
 
 class ConversationPageState extends State<ConversationPage> {
-  late int type = widget.conversationId == ""
-      ? 1
-      : 0; // 0 = conversation, 1 = server
+  int get type => widget.conversationId.isEmpty ? 1 : 0;
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -48,19 +46,28 @@ class ConversationPageState extends State<ConversationPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.conversationId.isEmpty) {
-      ws.setFocus(serverId: widget.serverId);
-    } else {
-      ws.setFocus(conversationId: widget.conversationId);
-    }
+    // if (widget.conversationId.isEmpty) {
+    //   ws.setFocus(serverId: widget.serverId);
+    // } else if (widget.conversationId.isNotEmpty) {
+    //   ws.setFocus(conversationId: widget.conversationId);
+    // } else {
+    //   debugPrint(
+    //     'ConversationPage initialized without conversationId or serverId',
+    //   );
+    // }
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
     _loadMessages();
   }
 
   @override
+  void didUpdateWidget(covariant ConversationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
   void dispose() {
-    ws.clearFocus();
+    // ensure we stop typing when leaving the page
     _stopTyping();
     _typingTimer?.cancel();
     _messageController.removeListener(_onTextChanged);
@@ -145,7 +152,6 @@ class ConversationPageState extends State<ConversationPage> {
     final scrollPositionFromBottom =
         _scrollController.position.maxScrollExtent -
         _scrollController.position.pixels;
-
 
     final newMessages = await dataProvider.loadMessages(
       widget.conversationId,
@@ -271,6 +277,8 @@ class ConversationPageState extends State<ConversationPage> {
         ),
       );
     }
+
+    final isGroup = conversation.participants.length > 1;
 
     final groupName = conversation.name;
     String participantName;
@@ -478,7 +486,7 @@ class ConversationPageState extends State<ConversationPage> {
             ],
           ),
         ),
-        if (!isScreenSmall && conversation.participants.isNotEmpty)
+        if (!isScreenSmall && !isGroup)
           UserSidebar(
             otherUserId:
                 conversation.participants

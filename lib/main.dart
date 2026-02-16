@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/layouts/MainLayout.dart';
 import 'package:hindsightchat/pages/auth/login_page.dart';
+import 'package:hindsightchat/pages/auth/register_page.dart';
 import 'package:hindsightchat/pages/main/MainPage.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
@@ -36,6 +37,11 @@ final _router = GoRouter(
     ),
 
     GoRoute(path: "/", builder: (context, state) => LoginPage()),
+    GoRoute(path: "/login", builder: (context, state) => LoginPage()),
+    GoRoute(
+      path: "/register",
+      builder: (context, state) => const RegisterPage(),
+    ),
   ],
 );
 

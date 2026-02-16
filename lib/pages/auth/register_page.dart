@@ -5,14 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:provider/provider.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -30,16 +31,18 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    final response = await auth.login(
+    final response = await auth.register(
+      username: _usernameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
@@ -49,9 +52,9 @@ class _LoginPageState extends State<LoginPage> {
     if (response.isSuccess) {
       context.go('/dash');
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response.error ?? 'Login failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response.error ?? 'Registration failed')),
+      );
     }
   }
 
@@ -80,15 +83,25 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Welcome back',
+                  'Not welcome back',
                   style: context.theme.typography.xl2.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                Text('Sign in to your account', textAlign: TextAlign.center),
+                Text('Register a new account', textAlign: TextAlign.center),
                 const SizedBox(height: 32),
+                FTextField(
+                  label: const Text('Username'),
+                  hint: 'Enter your username',
+                  suffixBuilder: (context, style, states) => Container(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text('.hindsight.chat'),
+                  ),
+                  controller: _usernameController,
+                ),
+                const SizedBox(height: 16),
                 FTextField.email(
                   label: const Text('Email'),
                   hint: 'you@example.com',
@@ -102,22 +115,20 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 24),
                 FButton(
-                  onPress: auth.isLoading ? null : _handleLogin,
+                  onPress: auth.isLoading ? null : _handleRegister,
                   child: auth.isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Sign in'),
+                      : const Text('Register'),
                 ),
                 const SizedBox(height: 16),
 
                 FButton(
-                  onPress: auth.isLoading
-                      ? null
-                      : () => context.go('/register'),
-                  child: const Text('Register'),
+                  onPress: auth.isLoading ? null : () => context.go('/login'),
+                  child: const Text('Back to Login'),
                 ),
                 if (auth.error != null) ...[
                   const SizedBox(height: 16),

@@ -306,6 +306,7 @@ class WebSocketService {
   }
 
   void clearFocus() {
+    print("running clear focus");
     send(WsMessage(op: 4, data: {}));
   }
 

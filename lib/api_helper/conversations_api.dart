@@ -7,6 +7,39 @@ class ConversationsApi {
 
   ConversationsApi(this._api);
 
+  // Creates a new group conversation with the specified users
+  // [userIds] - list of user IDs to include (excluding the creator)
+  // [title] - optional title for the conversation
+  Future<ApiResponse<String>> createConversation({
+    required List<String> userIds,
+    String? title,
+  }) async {
+    final body = <String, dynamic>{'user_ids': userIds};
+    if (title != null && title.isNotEmpty) {
+      body['title'] = title;
+    }
+
+    final response = await _api.post<Map<String, dynamic>>(
+      '/conversation/create',
+      body: body,
+    );
+
+    if (response.isSuccess && response.data != null) {
+      final conversationId = response.data!['conversation_id'] as String?;
+      return ApiResponse<String>(
+        success: true,
+        data: conversationId,
+        statusCode: response.statusCode,
+      );
+    }
+
+    return ApiResponse<String>(
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+    );
+  }
+
   Future<ApiResponse<List<DirectMessage>>> getMessages(
     String conversationId, {
     int? limit,

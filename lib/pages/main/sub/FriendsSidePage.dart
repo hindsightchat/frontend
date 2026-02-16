@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/pages/main/sub/AddFriendPage.dart';
+import 'package:hindsightchat/pages/main/sub/IncomingPage.dart';
+import 'package:hindsightchat/pages/main/sub/PendingPage.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
 
-enum FriendPageSection { friends, add, incomingrequests }
+enum FriendPageSection { friends, add, incomingrequests, pending }
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -25,7 +27,9 @@ class _FriendsPageState extends State<FriendsPage> {
       case FriendPageSection.add:
         return AddFriendPage();
       case FriendPageSection.incomingrequests:
-        return AddFriendPage(); // TODO: replace
+        return IncomingFriendRequestPage();
+      case FriendPageSection.pending:
+        return PendingFriendRequestPage(); // TODO: replace
     }
   }
 
@@ -39,7 +43,7 @@ class _FriendsPageState extends State<FriendsPage> {
 
     // count incoming friend requests
     final incomingRequests = dataProvider.incomingRequests.length;
-
+    final pendingRequests = dataProvider.outgoingRequests.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,6 +101,22 @@ class _FriendsPageState extends State<FriendsPage> {
                   'Incoming ${incomingRequests > 0 ? '($incomingRequests)' : ''}',
                   style: TextStyle(
                     color: selectedSection == FriendPageSection.incomingrequests
+                        ? Colors.white
+                        : Color(0xFF949BA4),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              FButton(
+                onPress: () => {
+                  setState(() => selectedSection = FriendPageSection.pending),
+                },
+                style: FButtonStyle.ghost(),
+                child: Text(
+                  'Pending ${pendingRequests > 0 ? '($pendingRequests)' : ''}',
+                  style: TextStyle(
+                    color: selectedSection == FriendPageSection.pending
                         ? Colors.white
                         : Color(0xFF949BA4),
                     fontSize: 14,

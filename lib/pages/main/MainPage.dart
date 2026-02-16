@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hindsightchat/components/Colours.dart';
+import 'package:hindsightchat/components/Dashboard/CreateConversation.dart';
 import 'package:hindsightchat/helpers/isMobile.dart';
 import 'package:hindsightchat/mixins/SidebarMixin.dart';
 import 'package:hindsightchat/pages/main/sub/ConversationPage.dart';
 import 'package:hindsightchat/pages/main/sub/FriendsSidePage.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
+import 'package:hindsightchat/services/websocket_service.dart';
 import 'package:hindsightchat/types/models.dart';
-import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 
 enum MainPageSection { friends, messageRequests, conversations }
@@ -23,11 +24,20 @@ class MainPageState extends ChangeNotifier {
   void setSelectedSection(MainPageSection section) {
     if (_isDisposed) return;
     selectedSection = section;
+    if (section != MainPageSection.conversations) {
+      if (_selectedConversationId != null) {
+        ws.clearFocus();
+        _selectedConversationId = null;
+      }
+    }
     notifyListeners();
   }
 
   void selectConversation(String? id) {
     if (_isDisposed) return;
+    if (id != null) {
+      ws.setFocus(conversationId: id);
+    }
     _selectedConversationId = id;
     notifyListeners();
   }
@@ -52,6 +62,17 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
   void dispose() {
     _pageState.markDisposed();
     super.dispose();
+  }
+
+  List<Conversation> get SortedConversations {
+    final dataProvider = context.watch<DataProvider>();
+    final conversations = dataProvider.conversations;
+    conversations.sort((a, b) {
+      final aLast = a.lastReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bLast = b.lastReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bLast.compareTo(aLast);
+    });
+    return conversations;
   }
 
   @override
@@ -83,8 +104,20 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
               mobilePageBuilder: (_) => const FriendsPage(),
             ),
             const SizedBox(height: 16),
-            const SidebarSection(title: 'Direct Messages'),
-            for (final convo in dataProvider.conversations)
+            SidebarSection(
+              title: 'Direct Messages',
+              onAddPressed: () async {
+                final conversationId = await showCreateConversationDialog(
+                  context,
+                );
+                if (conversationId != null) {
+                  _pageState.selectConversation(conversationId);
+                  dataProvider.markConversationRead(conversationId);
+                  _pageState.setSelectedSection(MainPageSection.conversations);
+                }
+              },
+            ),
+            for (final convo in SortedConversations)
               _ConversationSidebarItem(
                 convo: convo,
                 isSelected:
@@ -220,8 +253,7 @@ class _ConversationSidebarItemState extends State<_ConversationSidebarItem> {
           }
         },
         child: Container(
-          margin: const EdgeInsets.only(bottom: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(4),

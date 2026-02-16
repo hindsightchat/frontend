@@ -471,6 +471,15 @@ class DataProvider extends ChangeNotifier {
 
   void _onDmCreate(Map<String, dynamic> data) {
     _loadConversations().then((_) => _notifyAndScheduleFrame());
+    /*
+{"op":0,"d":{"conversation_id":"b7cfb84d-961d-448c-a09b-39a24c051fec","created_by":{"domain":"rmfosho.me","id":"3f0c6541-6c9e-46cd-80f6-083c4d3a399d","username":"rmfosho.me"},"is_group":true,"name":"test3","participants":[{"domain":"rmfosho.me","id":"3f0c6541-6c9e-46cd-80f6-083c4d3a399d","username":"rmfosho.me"},{"domain":"hindsig.ht","id":"53959359-16cb-4689-9c11-9a10c9e2edc2","username":"test.hindsig.ht"},{"domain":"hindsig.ht","id":"9c406161-3937-4ed3-a770-b50d1e357549","username":"vito.hindsig.ht"}]},"t":"DM_CREATE"}
+    */
+    // final conversation = Conversation.fromJson(data);
+    // _conversations[conversation.id] = conversation;
+    // // cache all participants
+    // for (final p in conversation.participants) {
+    //   _cacheUser(p);
+    // }
   }
 
   void _onDmParticipantAdd(Map<String, dynamic> data) {
@@ -678,6 +687,26 @@ class DataProvider extends ChangeNotifier {
     _error = response.error;
     notifyListeners();
     return false;
+  }
+
+  /// Creates a new group conversation with the specified users
+  /// Returns the conversation ID if successful, null otherwise
+  Future<String?> createConversation({
+    required List<String> userIds,
+    String? title,
+  }) async {
+    final response = await _conversationsApi.createConversation(
+      userIds: userIds,
+      title: title,
+    );
+    if (response.isSuccess && response.data != null) {
+      // websocket will handle adding the conversation via _onDmCreate
+      notifyListeners();
+      return response.data;
+    }
+    _error = response.error;
+    notifyListeners();
+    return null;
   }
 
   void clearError() {

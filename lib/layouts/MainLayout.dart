@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:blur/blur.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/helpers/isMobile.dart';
 import 'package:hindsightchat/mixins/SidebarMixin.dart';
@@ -23,9 +24,34 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
+  void onAuthStateChanged(AuthState state) {
+    if (!mounted) return;
+    if (state == AuthState.unauthenticated) {
+      context.go("/");
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final authProvider = context.read<AuthProvider>();
+    authProvider.addListener(() => onAuthStateChanged(authProvider.state));
+  }
+
   @override
   Widget build(BuildContext context) {
     final mobile = isMobile(context);
+    final authProvider = context.watch<AuthProvider>();
+
+    if (authProvider.state != AuthState.authenticated) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF5865F2)),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -62,33 +88,7 @@ class _DesktopLayout extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [const ServerSidebar(), const ContentSidebar()],
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(10),
-                    topRight: Radius.circular(10),
-                  ),
-                  child: Blur(
-                    blur: 1200,
-                    blurColor: Colors.black.withOpacity(0.5),
-                    child: Container(
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+
               const Positioned(
                 left: 0,
                 right: 0,
@@ -290,10 +290,7 @@ class MobileContentSidebar extends StatelessWidget {
                   color: const Color(0xFF1E1F22),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(children: [
-                  
-                  ],
-                ),
+                child: const Row(children: []),
               ),
             ),
           ),
@@ -637,9 +634,7 @@ class ContentSidebar extends StatelessWidget {
                   color: const Color(0xFF1E1F22),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Row(children: [
-                  ],
-                ),
+                child: const Row(children: []),
               ),
             ),
           ),
@@ -794,67 +789,72 @@ class _UserPanelState extends State<UserPanel> {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
 
-    return Container(
-      width: 72 + 300,
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      alignment: Alignment.center,
+    return GestureDetector(
+      onTap: () => authProvider.logout(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: MessageSendBoxColor,
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
+        width: 72 + 300,
+        height: 90,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         alignment: Alignment.center,
-        child: GestureDetector(
-          onTap: () {},
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: const Color(0xFF5865F2),
-                      image: const DecorationImage(
-                        image: NetworkImage("https://github.com/DwifteJB.png"),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: 14,
-                      height: 14,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: MessageSendBoxColor,
+            borderRadius: BorderRadius.all(Radius.circular(20)),
+          ),
+          alignment: Alignment.center,
+          child: GestureDetector(
+            onTap: () {},
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF23A559),
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(
-                          color: const Color(0xFF232428),
-                          width: 3,
+                        borderRadius: BorderRadius.circular(16),
+                        color: const Color(0xFF5865F2),
+                        image: const DecorationImage(
+                          image: NetworkImage(
+                            "https://github.com/DwifteJB.png",
+                          ),
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 10),
-              Text(
-                user?.username ?? 'User',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF23A559),
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(
+                            color: const Color(0xFF232428),
+                            width: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                const SizedBox(width: 10),
+                Text(
+                  user?.username ?? 'User',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
