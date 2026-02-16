@@ -16,7 +16,7 @@ may require make to be installed, so choco install make :D and zip
 ### Linux & Android
 
 ```
-docker build .
+docker build --target export --output ./output .
 ```
 
 exposes app-linux.zip & app-android.zip

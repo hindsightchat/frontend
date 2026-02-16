@@ -6,15 +6,25 @@ import 'package:hindsightchat/pages/main/sub/ConversationPage.dart';
 import 'package:hindsightchat/pages/main/sub/FriendsSidePage.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/types/models.dart';
+import 'package:http/http.dart';
 import 'package:provider/provider.dart';
+
+enum MainPageSection { friends, messageRequests, conversations }
 
 // provider tracks selected conversation and friends list for the sidebar
 class MainPageState extends ChangeNotifier {
+  MainPageSection selectedSection = MainPageSection.friends;
   String? _selectedConversationId;
   bool _isDisposed = false;
 
   String? get selectedConversationId => _selectedConversationId;
   bool get isDisposed => _isDisposed;
+
+  void setSelectedSection(MainPageSection section) {
+    if (_isDisposed) return;
+    selectedSection = section;
+    notifyListeners();
+  }
 
   void selectConversation(String? id) {
     if (_isDisposed) return;
@@ -57,15 +67,19 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
             SidebarNavItem(
               icon: Icons.people,
               label: 'friends',
-              isSelected: _pageState.selectedConversationId == null,
-              onSelect: () => _pageState.selectConversation(null),
+              isSelected: _pageState.selectedSection == MainPageSection.friends,
+              onSelect: () =>
+                  _pageState.setSelectedSection(MainPageSection.friends),
               mobilePageBuilder: (_) => const FriendsPage(),
             ),
             SidebarNavItem(
               icon: Icons.mail,
               label: 'message requests',
-              isSelected: _pageState.selectedConversationId == null,
-              onSelect: () => _pageState.selectConversation(null),
+              isSelected:
+                  _pageState.selectedSection == MainPageSection.messageRequests,
+              onSelect: () => _pageState.setSelectedSection(
+                MainPageSection.messageRequests,
+              ),
               mobilePageBuilder: (_) => const FriendsPage(),
             ),
             const SizedBox(height: 16),
@@ -73,11 +87,14 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
             for (final convo in dataProvider.conversations)
               _ConversationSidebarItem(
                 convo: convo,
-                isSelected: _pageState.selectedConversationId == convo.id,
+                isSelected:
+                    convo.id == _pageState.selectedConversationId &&
+                    _pageState.selectedSection == MainPageSection.conversations,
                 hasUnread: dataProvider.hasUnread(convo.id),
                 onSelect: () {
                   _pageState.selectConversation(convo.id);
                   dataProvider.markConversationRead(convo.id);
+                  _pageState.setSelectedSection(MainPageSection.conversations);
                 },
                 mobilePageBuilder: (_) => ConversationPage(
                   key: ValueKey(convo.id),
@@ -88,6 +105,24 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
         );
       },
     );
+  }
+
+  Widget getCurrentPage() {
+    switch (_pageState.selectedSection) {
+      case MainPageSection.friends:
+        return const FriendsPage();
+      case MainPageSection.messageRequests:
+        return const FriendsPage();
+      case MainPageSection.conversations:
+        if (_pageState.selectedConversationId != null) {
+          return ConversationPage(
+            key: ValueKey(_pageState.selectedConversationId),
+            conversationId: _pageState.selectedConversationId!,
+          );
+        } else {
+          return const FriendsPage();
+        }
+    }
   }
 
   @override
@@ -115,12 +150,7 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
                 top: BorderSide(color: MessageBorderColor, width: 1),
               ),
             ),
-            child: _pageState.selectedConversationId != null
-                ? ConversationPage(
-                    key: ValueKey(_pageState.selectedConversationId),
-                    conversationId: _pageState.selectedConversationId!,
-                  )
-                : const FriendsPage(),
+            child: getCurrentPage(),
           ),
         );
       },
