@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.hindsightchat"
+    namespace = "me.rmfosho.hindsightchat"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

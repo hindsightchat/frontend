@@ -1,4 +1,4 @@
-package com.example.hindsightchat
+package me.rmfosho.hindsightchat
 
 import io.flutter.embedding.android.FlutterActivity
 
