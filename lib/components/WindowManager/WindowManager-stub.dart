@@ -95,6 +95,17 @@ class _WindowManagerState extends State<WindowManager>
 // STUB:
 import 'package:flutter/widgets.dart';
 
+class WindowManagerWrapper extends StatelessWidget {
+  final Widget child;
+
+  const WindowManagerWrapper({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return child;
+  }
+}
+
 class WindowManager extends StatefulWidget {
   final Widget child;
   const WindowManager({super.key, required this.child});

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
@@ -8,19 +9,29 @@ import 'package:provider/provider.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+class WindowManagerWrapper extends StatelessWidget {
+  final Widget child;
+
+  bool get isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
+  const WindowManagerWrapper({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isDesktop) {
+      return WindowManager(child: child);
+    }
+    return child;
+  }
+}
+
 class WindowManager extends StatefulWidget {
   final Widget child;
   const WindowManager({super.key, required this.child});
 
   @override
-  // ignore: no_logic_in_create_state
-  State<WindowManager> createState() {
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      return _WindowManagerState();
-    } else {
-      return _WindowManagerStubState();
-    }
-  }
+  State<WindowManager> createState() => _WindowManagerState();
 }
 
 class _WindowManagerStubState extends State<WindowManager> {
