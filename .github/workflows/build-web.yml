@@ -1,0 +1,35 @@
+name: Build & Deploy Web App
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+      - name: Install dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Build Web app
+        working-directory: frontend
+        run: flutter build web --release --wasm
+        # ensure branch is main
+      - if: github.ref == 'refs/heads/main'
+        name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/build/web --project-name=hindsight-chat
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
