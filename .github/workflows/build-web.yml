@@ -18,10 +18,9 @@ jobs:
         with:
           channel: "stable"
       - name: Install dependencies
-        working-directory: frontend
+
         run: flutter pub get
       - name: Build Web app
-        working-directory: frontend
         run: flutter build web --release --wasm
         # ensure branch is main
       - if: github.ref == 'refs/heads/main'
