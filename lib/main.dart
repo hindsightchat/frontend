@@ -60,7 +60,9 @@ void main() async {
   if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     await windowManager.ensureInitialized();
 
-    await trayManager.setIcon(Platform.isWindows ? 'assets/app_icon.ico' : 'assets/logo.png');
+    await trayManager.setIcon(
+      Platform.isWindows ? 'assets/app_icon.ico' : 'assets/logo.png',
+    );
 
     Menu menu = Menu(
       items: [
@@ -189,7 +191,7 @@ class Application extends StatelessWidget {
             ),
           ),
           builder: (_, child) => AppWrapper(
-            child: WindowManagerComponent.WindowManager(
+            child: WindowManagerComponent.WindowManagerWrapper(
               child: Material(
                 child: FAnimatedTheme(
                   data: theme,
