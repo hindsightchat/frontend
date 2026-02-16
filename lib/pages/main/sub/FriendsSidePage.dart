@@ -1,26 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:hindsightchat/components/Colours.dart';
+import 'package:hindsightchat/pages/main/sub/AddFriendPage.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
 
-class FriendsPage extends StatelessWidget {
+enum FriendPageSection { friends, add, incomingrequests }
+
+class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
 
   @override
+  State<FriendsPage> createState() => _FriendsPageState();
+}
+
+class _FriendsPageState extends State<FriendsPage> {
+  FriendPageSection selectedSection = FriendPageSection.friends;
+
+  Widget getCurrentPage(BuildContext context) {
+    switch (selectedSection) {
+      case FriendPageSection.friends:
+        return MainFriendsPage(context);
+      case FriendPageSection.add:
+        return AddFriendPage();
+      case FriendPageSection.incomingrequests:
+        return AddFriendPage(); // TODO: replace
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final dataProvider = context.watch<DataProvider>();
+    return LayoutBuilder(context, getCurrentPage(context));
+  }
 
-    // Separate online and offline friends based on users cache
-    final onlineFriends = dataProvider.friends.where((f) {
-      final user = dataProvider.getUser(f.visibleUserId);
-      return user?.isOnline ?? false;
-    }).toList();
+  Widget LayoutBuilder(BuildContext context, Widget child) {
+    DataProvider dataProvider = context.watch<DataProvider>();
 
-    final offlineFriends = dataProvider.friends.where((f) {
-      final user = dataProvider.getUser(f.visibleUserId);
-      return user?.isOffline ?? true;
-    }).toList();
+    // count incoming friend requests
+    final incomingRequests = dataProvider.incomingRequests.length;
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,7 +56,7 @@ class FriendsPage extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.centerLeft,
-          child: const Row(
+          child: Row(
             children: [
               Icon(Icons.people, color: Colors.white, size: 20),
               SizedBox(width: 8),
@@ -49,52 +68,114 @@ class FriendsPage extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              SizedBox(width: 16),
+              // all button
+              FButton(
+                onPress: () => {
+                  setState(() => selectedSection = FriendPageSection.friends),
+                },
+                style: FButtonStyle.ghost(),
+                child: Text(
+                  'All',
+                  style: TextStyle(
+                    color: selectedSection == FriendPageSection.friends
+                        ? Colors.white
+                        : Color(0xFF949BA4),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              FButton(
+                onPress: () => {
+                  setState(
+                    () => selectedSection = FriendPageSection.incomingrequests,
+                  ),
+                },
+                style: FButtonStyle.ghost(),
+                child: Text(
+                  'Incoming ${incomingRequests > 0 ? '($incomingRequests)' : ''}',
+                  style: TextStyle(
+                    color: selectedSection == FriendPageSection.incomingrequests
+                        ? Colors.white
+                        : Color(0xFF949BA4),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              // Online, All, Pending and an add button on the right
+              Spacer(),
+              FButton(
+                child: Icon(Icons.person_add, color: Colors.white, size: 20),
+                onPress: () => {
+                  setState(() => selectedSection = FriendPageSection.add),
+                },
+                style: FButtonStyle.outline(),
+              ),
             ],
           ),
         ),
         // Friends list
-        Expanded(
-          child: dataProvider.friends.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No friends yet',
-                    style: TextStyle(color: Color(0xFF949BA4)),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (onlineFriends.isNotEmpty) ...[
-                      Text(
-                        'ONLINE - ${onlineFriends.length}',
-                        style: const TextStyle(
-                          color: Color(0xFF949BA4),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final friendship in onlineFriends)
-                        _FriendItem(friendship: friendship),
-                      const SizedBox(height: 16),
-                    ],
-                    if (offlineFriends.isNotEmpty) ...[
-                      Text(
-                        'OFFLINE - ${offlineFriends.length}',
-                        style: const TextStyle(
-                          color: Color(0xFF949BA4),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final friendship in offlineFriends)
-                        _FriendItem(friendship: friendship),
-                    ],
-                  ],
-                ),
-        ),
+        Expanded(child: child),
       ],
+    );
+  }
+
+  Widget MainFriendsPage(BuildContext context) {
+    final dataProvider = context.watch<DataProvider>();
+
+    // Separate online and offline friends based on users cache
+    final onlineFriends = dataProvider.friends.where((f) {
+      final user = dataProvider.getUser(f.visibleUserId);
+      return user?.isOnline ?? false;
+    }).toList();
+
+    final offlineFriends = dataProvider.friends.where((f) {
+      final user = dataProvider.getUser(f.visibleUserId);
+      return user?.isOffline ?? true;
+    }).toList();
+
+    return Expanded(
+      child: dataProvider.friends.isEmpty
+          ? const Center(
+              child: Text(
+                'No friends yet',
+                style: TextStyle(color: Color(0xFF949BA4)),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (onlineFriends.isNotEmpty) ...[
+                  Text(
+                    'ONLINE - ${onlineFriends.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF949BA4),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final friendship in onlineFriends)
+                    _FriendItem(friendship: friendship),
+                  const SizedBox(height: 16),
+                ],
+                if (offlineFriends.isNotEmpty) ...[
+                  Text(
+                    'OFFLINE - ${offlineFriends.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF949BA4),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final friendship in offlineFriends)
+                    _FriendItem(friendship: friendship),
+                ],
+              ],
+            ),
     );
   }
 }

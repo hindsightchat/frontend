@@ -47,16 +47,31 @@ class DataProvider extends ChangeNotifier {
   Activity? _currentActivity;
   String _currentStatus = 'online';
 
+  /* THE USERS FRIENDS */
   List<Friendship> get friends => _friends.values.toList();
+
+  /* INCOMING FRIEND REQUESTS */
   List<FriendRequest> get incomingRequests => _incomingRequests.values.toList();
+
+  /* OUTGOING FRIEND REQUESTS */
   List<FriendRequest> get outgoingRequests => _outgoingRequests.values.toList();
+
+  /* CONVERSATIONS (1 ON 1 OR GROUPS) */
   List<Conversation> get conversations => _conversations.values.toList();
+
+  /* SERVERS  */
   List<Server> get servers => _servers.values.toList();
+
+  /* INIT/STATUS */
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
   String? get error => _error;
+
+  /* USER DATA */
   Activity? get currentActivity => _currentActivity;
   String get currentStatus => _currentStatus;
+
+  /* GETTERS */
   Friendship? getFriend(String id) => _friends[id];
   Friendship? getFriendByUserId(String visibleUserId) => _friends.values
       .where((f) => f.visibleUserId == visibleUserId)
@@ -86,6 +101,8 @@ class DataProvider extends ChangeNotifier {
         .map((e) => e.key)
         .toList();
   }
+
+  /* API HELPERS */
 
   FriendsApi get _friendsApi => FriendsApi(ApiHelper(token: _token));
   UsersApi get _usersApi => UsersApi(ApiHelper(token: _token));
@@ -131,6 +148,7 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ipc message handler for activity updates from rpc process
   Future<void> _setupIPC() async {
     if (kIsWeb) return;
 

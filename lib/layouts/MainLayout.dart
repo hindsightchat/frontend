@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:blur/blur.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:hindsightchat/components/Colours.dart';
@@ -70,16 +71,18 @@ class _DesktopLayout extends StatelessWidget {
                     topLeft: Radius.circular(10),
                     topRight: Radius.circular(10),
                   ),
-                  // blurred background for user panel using backdrop filter
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                  child: Blur(
+                    blur: 1200,
+                    blurColor: Colors.black.withOpacity(0.5),
                     child: Container(
                       height: 90,
                       decoration: BoxDecoration(
-                        color: MessageSendBoxColor.withOpacity(0.1),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(10),
-                          topRight: Radius.circular(10),
+                        color: Colors.black.withOpacity(0.3),
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
                         ),
                       ),
                     ),
@@ -287,14 +290,8 @@ class MobileContentSidebar extends StatelessWidget {
                   color: const Color(0xFF1E1F22),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.search, size: 20, color: Color(0xFF949BA4)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Search',
-                      style: TextStyle(color: Color(0xFF949BA4), fontSize: 15),
-                    ),
+                child: const Row(children: [
+                  
                   ],
                 ),
               ),
@@ -640,9 +637,7 @@ class ContentSidebar extends StatelessWidget {
                   color: const Color(0xFF1E1F22),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.search, size: 16, color: Color(0xFF949BA4)),
+                child: const Row(children: [
                   ],
                 ),
               ),
