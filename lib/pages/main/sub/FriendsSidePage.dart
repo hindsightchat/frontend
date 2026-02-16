@@ -73,59 +73,72 @@ class _FriendsPageState extends State<FriendsPage> {
                 ),
               ),
               SizedBox(width: 16),
-              // all button
-              FButton(
-                onPress: () => {
-                  setState(() => selectedSection = FriendPageSection.friends),
-                },
-                style: FButtonStyle.ghost(),
-                child: Text(
-                  'All',
-                  style: TextStyle(
-                    color: selectedSection == FriendPageSection.friends
-                        ? Colors.white
-                        : Color(0xFF949BA4),
-                    fontSize: 14,
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      FButton(
+                        onPress: () => {
+                          setState(
+                            () => selectedSection = FriendPageSection.friends,
+                          ),
+                        },
+                        style: FButtonStyle.ghost(),
+                        child: Text(
+                          'All',
+                          style: TextStyle(
+                            color: selectedSection == FriendPageSection.friends
+                                ? Colors.white
+                                : Color(0xFF949BA4),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      FButton(
+                        onPress: () => {
+                          setState(
+                            () => selectedSection =
+                                FriendPageSection.incomingrequests,
+                          ),
+                        },
+                        style: FButtonStyle.ghost(),
+                        child: Text(
+                          'Incoming ${incomingRequests > 0 ? '($incomingRequests)' : ''}',
+                          style: TextStyle(
+                            color:
+                                selectedSection ==
+                                    FriendPageSection.incomingrequests
+                                ? Colors.white
+                                : Color(0xFF949BA4),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      FButton(
+                        onPress: () => {
+                          setState(
+                            () => selectedSection = FriendPageSection.pending,
+                          ),
+                        },
+                        style: FButtonStyle.ghost(),
+                        child: Text(
+                          'Pending ${pendingRequests > 0 ? '($pendingRequests)' : ''}',
+                          style: TextStyle(
+                            color: selectedSection == FriendPageSection.pending
+                                ? Colors.white
+                                : Color(0xFF949BA4),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               SizedBox(width: 8),
-              FButton(
-                onPress: () => {
-                  setState(
-                    () => selectedSection = FriendPageSection.incomingrequests,
-                  ),
-                },
-                style: FButtonStyle.ghost(),
-                child: Text(
-                  'Incoming ${incomingRequests > 0 ? '($incomingRequests)' : ''}',
-                  style: TextStyle(
-                    color: selectedSection == FriendPageSection.incomingrequests
-                        ? Colors.white
-                        : Color(0xFF949BA4),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              FButton(
-                onPress: () => {
-                  setState(() => selectedSection = FriendPageSection.pending),
-                },
-                style: FButtonStyle.ghost(),
-                child: Text(
-                  'Pending ${pendingRequests > 0 ? '($pendingRequests)' : ''}',
-                  style: TextStyle(
-                    color: selectedSection == FriendPageSection.pending
-                        ? Colors.white
-                        : Color(0xFF949BA4),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              // Online, All, Pending and an add button on the right
-              Spacer(),
               FButton(
                 child: Icon(Icons.person_add, color: Colors.white, size: 20),
                 onPress: () => {
@@ -156,47 +169,45 @@ class _FriendsPageState extends State<FriendsPage> {
       return user?.isOffline ?? true;
     }).toList();
 
-    return Expanded(
-      child: dataProvider.friends.isEmpty
-          ? const Center(
-              child: Text(
-                'No friends yet',
-                style: TextStyle(color: Color(0xFF949BA4)),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (onlineFriends.isNotEmpty) ...[
-                  Text(
-                    'ONLINE - ${onlineFriends.length}',
-                    style: const TextStyle(
-                      color: Color(0xFF949BA4),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final friendship in onlineFriends)
-                    _FriendItem(friendship: friendship),
-                  const SizedBox(height: 16),
-                ],
-                if (offlineFriends.isNotEmpty) ...[
-                  Text(
-                    'OFFLINE - ${offlineFriends.length}',
-                    style: const TextStyle(
-                      color: Color(0xFF949BA4),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final friendship in offlineFriends)
-                    _FriendItem(friendship: friendship),
-                ],
-              ],
+    return dataProvider.friends.isEmpty
+        ? const Center(
+            child: Text(
+              'No friends yet',
+              style: TextStyle(color: Color(0xFF949BA4)),
             ),
-    );
+          )
+        : ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (onlineFriends.isNotEmpty) ...[
+                Text(
+                  'ONLINE - ${onlineFriends.length}',
+                  style: const TextStyle(
+                    color: Color(0xFF949BA4),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final friendship in onlineFriends)
+                  _FriendItem(friendship: friendship),
+                const SizedBox(height: 16),
+              ],
+              if (offlineFriends.isNotEmpty) ...[
+                Text(
+                  'OFFLINE - ${offlineFriends.length}',
+                  style: const TextStyle(
+                    color: Color(0xFF949BA4),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final friendship in offlineFriends)
+                  _FriendItem(friendship: friendship),
+              ],
+            ],
+          );
   }
 }
 

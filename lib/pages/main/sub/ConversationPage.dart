@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/components/Conversations/UserSidebar.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';
@@ -25,9 +26,10 @@ class ConversationPageState extends State<ConversationPage> {
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+  final ValueNotifier<bool> _isSendingNotifier = ValueNotifier<bool>(false);
 
   bool _isLoading = true;
-  bool _isSending = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _previousMessageCount = 0;
@@ -67,13 +69,14 @@ class ConversationPageState extends State<ConversationPage> {
 
   @override
   void dispose() {
-    // ensure we stop typing when leaving the page
     _stopTyping();
     _typingTimer?.cancel();
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _focusNode.dispose();
+    _isSendingNotifier.dispose();
     super.dispose();
   }
 
@@ -194,9 +197,8 @@ class ConversationPageState extends State<ConversationPage> {
 
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
-    if (content.isEmpty || _isSending) return;
+    if (content.isEmpty || _isSendingNotifier.value) return;
 
-    // on web, defer the entire operation to avoid DOM text input conflicts
     if (kIsWeb) {
       Future.microtask(() => _doSendMessage(content));
     } else {
@@ -205,7 +207,9 @@ class ConversationPageState extends State<ConversationPage> {
   }
 
   Future<void> _doSendMessage(String content) async {
-    if (_isSending) return;
+    if (_isSendingNotifier.value) return;
+
+    _isSendingNotifier.value = true;
 
     try {
       _messageController.clear();
@@ -215,22 +219,17 @@ class ConversationPageState extends State<ConversationPage> {
 
     _stopTyping();
 
-    // idk why web is so ass about this
-    if (!kIsWeb) {
-      setState(() => _isSending = true);
-    }
-
     try {
       await ws.sendMessage(
         conversationId: widget.conversationId,
         content: content,
       );
-      // _scrollToBottom();
     } catch (e) {
       debugPrint('Failed to send message: $e');
     } finally {
       if (mounted) {
-        setState(() => _isSending = false);
+        _isSendingNotifier.value = false;
+        _focusNode.requestFocus();
       }
     }
   }
@@ -441,16 +440,16 @@ class ConversationPageState extends State<ConversationPage> {
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          onEditingComplete: () =>
-                              {}, // keeps keyboard open on submit
-
+                          focusNode: _focusNode,
+                          onEditingComplete: () => {},
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontFamily: "Inter",
                           ),
                           decoration: InputDecoration(
-                            hintText: 'message @$participantName',
+                            hintText:
+                                'message ${isGroup ? '' : "@"}$participantName',
                             hintStyle: TextStyle(color: MutedTextColor),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
@@ -459,26 +458,29 @@ class ConversationPageState extends State<ConversationPage> {
                           ),
                           canRequestFocus: true,
                           autofocus: true,
-                          onSubmitted: (_) => {_sendMessage()},
-                          textInputAction: TextInputAction
-                              .send, // show send button on keyboard
-                          enabled: !_isSending,
+                          onSubmitted: (_) => _sendMessage(),
+                          textInputAction: TextInputAction.send,
                         ),
                       ),
-                      if (_isSending)
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: MutedTextColor,
-                          ),
-                        )
-                      else
-                        IconButton(
-                          icon: Icon(Icons.send, color: MutedTextColor),
-                          onPressed: _sendMessage,
-                        ),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _isSendingNotifier,
+                        builder: (context, isSending, child) {
+                          if (isSending) {
+                            return SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: MutedTextColor,
+                              ),
+                            );
+                          }
+                          return IconButton(
+                            icon: Icon(Icons.send, color: MutedTextColor),
+                            onPressed: _sendMessage,
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),

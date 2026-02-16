@@ -65,7 +65,20 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
   }
 
   @override
+  void initState() {
+    super.initState();
+    print("MainPage initState");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print("MainPage didChangeDependencies");
+  }
+
+  @override
   Widget? buildSidebar(BuildContext context) {
+    print("building sidebar");
     final dataProvider = context.watch<DataProvider>();
 
     final conversations = dataProvider.conversations;
@@ -156,11 +169,14 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
 
   @override
   Widget build(BuildContext context) {
+    print(
+      "rendering main page, selected convo: ${_pageState.selectedConversationId}, selected section: ${_pageState.selectedSection}",
+    );
     final mobile = isMobile(context);
 
     // mobile (uses sheet)
     if (mobile) {
-      return const SizedBox.shrink();
+      return SizedBox();
     }
 
     // desktop

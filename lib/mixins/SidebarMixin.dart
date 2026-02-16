@@ -6,31 +6,22 @@ import 'package:hindsightchat/providers/SidebarProvider.dart';
 import 'package:provider/provider.dart';
 
 mixin SidebarMixin<T extends StatefulWidget> on State<T> {
-  // Override this to provide custom sidebar content.
-  // Return null to use the default sidebar. (empty, nothing there lol)
-  //
-  // The [context] parameter is from the sidebar widget, so you can
-  // use context.watch<Provider>() and the sidebar will automatically
-  // rebuild when that provider notifies listeners.
   Widget? buildSidebar(BuildContext context) => null;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateSidebar();
-    });
-  }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-  void _updateSidebar() {
-    if (!mounted) return;
+    print("Registering sidebar from ${widget.runtimeType}");
+
     context.read<SidebarProvider>().setSidebar(
-      (sidebarContext) => buildSidebar(sidebarContext)!,
+      (sidebarContext) => buildSidebar(sidebarContext),
     );
   }
 
   @override
   void dispose() {
+    context.read<SidebarProvider>().clearSidebar();
     super.dispose();
   }
 }

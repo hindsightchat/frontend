@@ -199,62 +199,76 @@ class _MobileLayoutState extends State<_MobileLayout>
       }
     }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragStart: _onHorizontalDragStart,
-      onHorizontalDragUpdate: (details) =>
-          _onHorizontalDragUpdate(details, mobileNav),
-      onHorizontalDragEnd: (details) =>
-          _onHorizontalDragEnd(details, mobileNav),
-      child: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const ServerSidebar(),
-                    const Expanded(child: MobileContentSidebar()),
-                  ],
-                ),
-              ),
-              const MobileUserPanel(),
-            ],
-          ),
-          if (mobileNav.hasLastPage &&
-              !mobileNav.isPageOpen &&
-              mobileNav.pageBuilder == null)
+    return SafeArea(
+      bottom: false,
+      left: false,
+      right: false,
+
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: _onHorizontalDragStart,
+        onHorizontalDragUpdate: (details) =>
+            _onHorizontalDragUpdate(details, mobileNav),
+        onHorizontalDragEnd: (details) =>
+            _onHorizontalDragEnd(details, mobileNav),
+        child: Stack(
+          children: [
+            Column(children: [Expanded(child: widget.child)]),
             Positioned(
-              right: 0,
+              left: 0,
               top: 0,
               bottom: 0,
-              child: Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, Colors.white.withOpacity(0.1)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const ServerSidebar(),
+                  const SizedBox(width: 300, child: MobileContentSidebar()),
+                ],
+              ),
+            ),
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MobileUserPanel(),
+            ),
+            if (mobileNav.hasLastPage &&
+                !mobileNav.isPageOpen &&
+                mobileNav.pageBuilder == null)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.white.withOpacity(0.1),
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (mobileNav.pageBuilder != null)
-            SlideTransition(
-              position: _slideAnimation,
-              child: Container(
-                color: DarkBackgroundColor,
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      Expanded(child: mobileNav.pageBuilder!(context)),
-                    ],
+            if (mobileNav.pageBuilder != null)
+              SlideTransition(
+                position: _slideAnimation,
+                child: Container(
+                  color: DarkBackgroundColor,
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        Expanded(child: mobileNav.pageBuilder!(context)),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -312,6 +326,9 @@ class MobileUserPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
+
+    print("Auth state: ${authProvider.state}");
+    print(GoRouter.of(context).state?.path);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
