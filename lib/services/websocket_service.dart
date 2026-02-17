@@ -184,6 +184,8 @@ class WebSocketService {
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
       debugPrint('[ws] max reconnect attempts reached');
+      // reload app
+      
       return;
     }
 

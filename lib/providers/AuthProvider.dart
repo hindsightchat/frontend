@@ -174,6 +174,10 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _error = null;
     _state = AuthState.unauthenticated;
+    // delete user and timestamp from storage
+    await _storage.delete(key: 'user');
+    await _storage.delete(key: 'user_timestamp');
+    
     await _storage.delete(key: 'token');
   }
 
