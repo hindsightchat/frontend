@@ -146,8 +146,10 @@ class _MobileLayoutState extends State<_MobileLayout>
     DragUpdateDetails details,
     MobileNavigationProvider mobileNav,
   ) {
-    final delta = details.primaryDelta ?? 0;
+    double delta = details.primaryDelta ?? 0;
     final screenWidth = context.size?.width ?? 400;
+
+    delta = delta * 2; // increase sensitivity
 
     if (mobileNav.isPageOpen || mobileNav.pageBuilder != null) {
       final newValue = (_controller.value - delta / screenWidth).clamp(
@@ -166,7 +168,7 @@ class _MobileLayoutState extends State<_MobileLayout>
     MobileNavigationProvider mobileNav,
   ) {
     _isDragging = false;
-    final velocity = details.primaryVelocity ?? 0;
+    double velocity = details.primaryVelocity ?? 0;
 
     if (mobileNav.isPageOpen || mobileNav.pageBuilder != null) {
       if (_controller.value > 0.5 || velocity < -500) {
@@ -216,13 +218,16 @@ class _MobileLayoutState extends State<_MobileLayout>
             Column(children: [Expanded(child: widget.child)]),
             Positioned(
               left: 0,
+              right: 0,
               top: 0,
               bottom: 0,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const ServerSidebar(),
-                  const SizedBox(width: 300, child: MobileContentSidebar()),
+                  const Expanded(
+                    child: SizedBox(child: MobileContentSidebar()),
+                  ),
                 ],
               ),
             ),
