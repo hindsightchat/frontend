@@ -64,8 +64,8 @@ void main() async {
       Platform.isWindows ? 'assets/app_icon.ico' : 'assets/logo.png',
     );
 
-    await trayManager.setTitle("Hindsight Chat");
     await trayManager.setToolTip("Hindsight Chat");
+    // await trayManager.setToolTip("Hindsight Chat");
 
     Menu menu = Menu(
       items: [
