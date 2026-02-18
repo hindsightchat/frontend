@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:forui/forui.dart';
-import 'package:forui/widgets/text_field.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:provider/provider.dart';
 
@@ -15,7 +13,7 @@ class AddFriendPage extends StatefulWidget {
 class _AddFriendPageState extends State<AddFriendPage> {
   bool _isSendingRequest = false;
   String _statusMessage = '';
-  TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
 
   @override
   void dispose() {
@@ -75,17 +73,15 @@ class _AddFriendPageState extends State<AddFriendPage> {
             children: [
               Expanded(
                 child: FTextField(
-                  controller: _usernameController,
+                  control: .managed(controller: _usernameController),
                   hint: 'Enter user.example.com',
                 ),
               ),
               const SizedBox(width: 8),
               FButton(
                 onPress: sendFriendRequest,
+                variant: _isSendingRequest ? .ghost : .outline,
                 child: Text('Send Request'),
-                style: _isSendingRequest
-                    ? FButtonStyle.ghost()
-                    : FButtonStyle.outline(),
               ),
             ],
           ),

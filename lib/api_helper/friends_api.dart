@@ -74,10 +74,7 @@ class FriendsApi {
   }) {
     return _api.post<FriendRequest>(
       '/friends/requests',
-      body: {
-        if (userId != null) 'user_id': userId,
-        if (username != null) 'username': username,
-      },
+      body: {'user_id': ?userId, 'username': ?username},
       fromJson: FriendRequest.fromJson,
     );
   }

@@ -110,7 +110,7 @@ class _CreateConversationDialogState extends State<_CreateConversationDialog> {
             if (_isMultipleSelected) ...[
               const SizedBox(height: 16),
               FTextField(
-                controller: _titleController,
+                control: .managed(controller: _titleController),
                 label: const Text('Group Name (optional)'),
                 hint: 'Enter group name...',
                 maxLength: 20,
@@ -163,7 +163,7 @@ class _CreateConversationDialogState extends State<_CreateConversationDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 FButton(
-                  style: FButtonStyle.outline(),
+                  variant: .outline,
                   onPress: () => Navigator.of(context).pop(null),
                   child: const Text('Back'),
                 ),

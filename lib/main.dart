@@ -64,6 +64,9 @@ void main() async {
       Platform.isWindows ? 'assets/app_icon.ico' : 'assets/logo.png',
     );
 
+    await trayManager.setTitle("Hindsight Chat");
+    await trayManager.setToolTip("Hindsight Chat");
+
     Menu menu = Menu(
       items: [
         MenuItem(key: 'show', label: 'Show'),
@@ -74,8 +77,8 @@ void main() async {
     await trayManager.setContextMenu(menu);
 
     WindowOptions windowOptions = WindowOptions(
-      size: Size(1280, 720),
-      minimumSize: Size(500, 500),
+      size: Size(1280, 720), // assume 720p for now
+      minimumSize: Size(729, 500), // just past mobile breakpoint
       center: true,
       backgroundColor: DarkBackgroundColor,
       skipTaskbar: false,
@@ -193,7 +196,7 @@ class Application extends StatelessWidget {
           builder: (_, child) => AppWrapper(
             child: WindowManagerComponent.WindowManagerWrapper(
               child: Material(
-                child: FAnimatedTheme(
+                child: FTheme(
                   data: theme,
                   child: _isDesktop
                       ? Overlay(

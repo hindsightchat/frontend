@@ -99,19 +99,27 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.only(right: 8),
                     child: Text('.hindsight.chat'),
                   ),
-                  controller: _usernameController,
+                  control: .managed(controller: _usernameController),
                 ),
                 const SizedBox(height: 16),
-                FTextField.email(
+                FTextFormField.email(
                   label: const Text('Email'),
                   hint: 'you@example.com',
                   keyboardType: TextInputType.emailAddress,
-                  controller: _emailController,
+                  autovalidateMode: .onUserInteraction,
+                  validator: (value) => (value?.contains('@') ?? false)
+                      ? null
+                      : "Please enter a valid email.",
+                  control: .managed(controller: _emailController),
                 ),
                 const SizedBox(height: 16),
                 FTextFormField.password(
-                  controller: _passwordController,
+                  control: .managed(controller: _passwordController),
                   label: const Text('Password'),
+                  autovalidateMode: .onUserInteraction,
+                  validator: (value) => 8 <= (value?.length ?? 0)
+                      ? null
+                      : "The password must be longer than 8 characters.",
                 ),
                 const SizedBox(height: 24),
                 FButton(
@@ -136,7 +144,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     icon: const Icon(Icons.error_outline),
                     title: const Text('Error'),
                     subtitle: Text(auth.error!),
-                    style: FAlertStyle.destructive(),
+                    variant: .destructive,
                   ),
                 ],
               ],

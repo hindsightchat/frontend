@@ -183,7 +183,7 @@ class _MainPageState extends State<MainPage> with SidebarMixin {
     return ListenableBuilder(
       listenable: _pageState,
       builder: (context, _) {
-        return Container(
+        return SizedBox(
           width: double.infinity,
           height: double.infinity,
 

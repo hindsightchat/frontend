@@ -5,7 +5,6 @@ import 'package:hindsightchat/api_helper/friends_api.dart';
 import 'package:hindsightchat/api_helper/users_api.dart';
 import 'package:hindsightchat/api_helper/conversations_api.dart';
 import 'package:hindsightchat/api_helper/ApiHelper.dart';
-import 'package:hindsightchat/providers/AuthProvider.dart';
 import 'package:hindsightchat/services/websocket_service.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:hindsightchat/types/websocket/websocket-types.dart';

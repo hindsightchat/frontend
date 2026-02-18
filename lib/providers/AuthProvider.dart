@@ -42,18 +42,16 @@ class AuthProvider extends ChangeNotifier {
 
     if (_token != null) {
       // check if there is a user in storage and user_timestamp that is less than 2 hours
-      final _storeduser = await _storage.read(key: 'user');
-      final _storedUserTimestampStr = await _storage.read(
-        key: 'user_timestamp',
-      );
+      final storeduser = await _storage.read(key: 'user');
+      final storedUserTimestampStr = await _storage.read(key: 'user_timestamp');
 
-      if (_storeduser != null && _storedUserTimestampStr != null) {
-        final _storedUserTimestamp = DateTime.tryParse(_storedUserTimestampStr);
-        if (_storedUserTimestamp != null &&
-            DateTime.now().difference(_storedUserTimestamp) <
+      if (storeduser != null && storedUserTimestampStr != null) {
+        final storedUserTimestamp = DateTime.tryParse(storedUserTimestampStr);
+        if (storedUserTimestamp != null &&
+            DateTime.now().difference(storedUserTimestamp) <
                 const Duration(hours: 2)) {
-          final _decodedData = jsonDecode(_storeduser);
-          _user = AuthUser.fromJson(_decodedData);
+          final decodedData = jsonDecode(storeduser);
+          _user = AuthUser.fromJson(decodedData);
           _state = AuthState.authenticated;
           ws.connect(_token!);
           _dataProvider?.init(_token!);
@@ -177,7 +175,7 @@ class AuthProvider extends ChangeNotifier {
     // delete user and timestamp from storage
     await _storage.delete(key: 'user');
     await _storage.delete(key: 'user_timestamp');
-    
+
     await _storage.delete(key: 'token');
   }
 

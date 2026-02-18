@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:hindsightchat/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:hindsightchat/types/api_response.dart';

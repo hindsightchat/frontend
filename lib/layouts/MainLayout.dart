@@ -1,6 +1,3 @@
-import 'dart:ui';
-
-import 'package:blur/blur.dart';
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:go_router/go_router.dart';
@@ -333,7 +330,7 @@ class MobileUserPanel extends StatelessWidget {
     final user = authProvider.user;
 
     print("Auth state: ${authProvider.state}");
-    print(GoRouter.of(context).state?.path);
+    print(GoRouter.of(context).state.path);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -412,7 +409,7 @@ class _ServerSidebarState extends State<ServerSidebar> {
     final dataProvider = context.watch<DataProvider>();
     final servers = dataProvider.servers;
 
-    return Container(
+    return SizedBox(
       width: 72,
       child: Column(
         children: [
@@ -534,7 +531,7 @@ class _ServerIconWidget extends StatelessWidget {
                                 'assets/hindsight.png',
                                 width: 28,
                                 height: 28,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.home,
                                   color: Colors.white,
                                   size: 24,
@@ -706,8 +703,8 @@ class _SidebarNavItem extends StatefulWidget {
   const _SidebarNavItem({
     required this.icon,
     required this.label,
-    this.isSelected = false,
     required this.onTap,
+    this.isSelected = false,
   });
 
   @override

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
-import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
 
 class UserSidebar extends StatefulWidget {
@@ -131,7 +130,7 @@ class _UserSidebarState extends State<UserSidebar> {
                           ),
                         ),
                         SizedBox(height: 10),
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 12, bottom: 12),

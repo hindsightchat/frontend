@@ -29,7 +29,7 @@ class _FriendsPageState extends State<FriendsPage> {
       case FriendPageSection.incomingrequests:
         return IncomingFriendRequestPage();
       case FriendPageSection.pending:
-        return PendingFriendRequestPage(); // TODO: replace
+        return PendingFriendRequestPage();
     }
   }
 
@@ -84,7 +84,7 @@ class _FriendsPageState extends State<FriendsPage> {
                             () => selectedSection = FriendPageSection.friends,
                           ),
                         },
-                        style: FButtonStyle.ghost(),
+                        variant: .ghost,
                         child: Text(
                           'All',
                           style: TextStyle(
@@ -103,7 +103,7 @@ class _FriendsPageState extends State<FriendsPage> {
                                 FriendPageSection.incomingrequests,
                           ),
                         },
-                        style: FButtonStyle.ghost(),
+                        variant: .ghost,
                         child: Text(
                           'Incoming ${incomingRequests > 0 ? '($incomingRequests)' : ''}',
                           style: TextStyle(
@@ -123,7 +123,7 @@ class _FriendsPageState extends State<FriendsPage> {
                             () => selectedSection = FriendPageSection.pending,
                           ),
                         },
-                        style: FButtonStyle.ghost(),
+                        variant: .ghost,
                         child: Text(
                           'Pending ${pendingRequests > 0 ? '($pendingRequests)' : ''}',
                           style: TextStyle(
@@ -140,11 +140,11 @@ class _FriendsPageState extends State<FriendsPage> {
               ),
               SizedBox(width: 8),
               FButton(
-                child: Icon(Icons.person_add, color: Colors.white, size: 20),
                 onPress: () => {
                   setState(() => selectedSection = FriendPageSection.add),
                 },
-                style: FButtonStyle.outline(),
+                variant: .outline,
+                child: Icon(Icons.person_add, color: Colors.white, size: 20),
               ),
             ],
           ),

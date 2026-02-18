@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forui/widgets/button.dart';
-import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
@@ -56,16 +55,16 @@ class _FriendItem extends StatelessWidget {
             onPress: () async {
               await dataProvider.acceptFriendRequest(friendship.id);
             },
+            variant: .outline,
             child: Text('Accept'),
-            style: FButtonStyle.outline(),
           ),
           const SizedBox(width: 8),
           FButton(
             onPress: () async {
               await dataProvider.declineFriendRequest(friendship.id);
             },
+            variant: .ghost,
             child: Text('Reject'),
-            style: FButtonStyle.ghost(),
           ),
         ],
       ),

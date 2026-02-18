@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/components/Conversations/UserSidebar.dart';
 import 'package:hindsightchat/providers/AuthProvider.dart';

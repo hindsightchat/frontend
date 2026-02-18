@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:provider/provider.dart';
-
 import 'package:hindsightchat/components/Colours.dart';
 
 class DesktopTitlebar extends StatefulWidget {
@@ -192,8 +190,8 @@ class _TitlebarIconButton extends StatefulWidget {
   final Widget? iconImage;
 
   const _TitlebarIconButton({
-    this.icon,
     required this.onPressed,
+    this.icon,
     this.iconImage,
   });
 

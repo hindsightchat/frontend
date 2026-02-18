@@ -89,15 +89,19 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 8),
                 Text('Sign in to your account', textAlign: TextAlign.center),
                 const SizedBox(height: 32),
-                FTextField.email(
+                FTextFormField.email(
                   label: const Text('Email'),
                   hint: 'you@example.com',
                   keyboardType: TextInputType.emailAddress,
-                  controller: _emailController,
+                  control: .managed(controller: _emailController),
+                  autovalidateMode: .onUserInteraction,
+                  validator: (value) => (value?.contains('@') ?? false)
+                      ? null
+                      : "Please enter a valid email.",
                 ),
                 const SizedBox(height: 16),
                 FTextFormField.password(
-                  controller: _passwordController,
+                  control: .managed(controller: _passwordController),
                   label: const Text('Password'),
                 ),
                 const SizedBox(height: 24),
@@ -125,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
                     icon: const Icon(Icons.error_outline),
                     title: const Text('Error'),
                     subtitle: Text(auth.error!),
-                    style: FAlertStyle.destructive(),
+                    variant: .destructive,
                   ),
                 ],
               ],

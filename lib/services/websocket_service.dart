@@ -185,7 +185,7 @@ class WebSocketService {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
       debugPrint('[ws] max reconnect attempts reached');
       // reload app
-      
+
       return;
     }
 
@@ -299,9 +299,9 @@ class WebSocketService {
       WsMessage(
         op: 4,
         data: {
-          if (channelId != null) 'channel_id': channelId,
-          if (serverId != null) 'server_id': serverId,
-          if (conversationId != null) 'conversation_id': conversationId,
+          'channel_id': ?channelId,
+          'server_id': ?serverId,
+          'conversation_id': ?conversationId,
         },
       ),
     );
@@ -321,9 +321,9 @@ class WebSocketService {
       WsMessage(
         op: 20,
         data: {
-          if (channelId != null) 'channel_id': channelId,
-          if (serverId != null) 'server_id': serverId,
-          if (conversationId != null) 'conversation_id': conversationId,
+          'channel_id': ?channelId,
+          'server_id': ?serverId,
+          'conversation_id': ?conversationId,
         },
       ),
     );
@@ -338,9 +338,9 @@ class WebSocketService {
       WsMessage(
         op: 21,
         data: {
-          if (channelId != null) 'channel_id': channelId,
-          if (serverId != null) 'server_id': serverId,
-          if (conversationId != null) 'conversation_id': conversationId,
+          'channel_id': ?channelId,
+          'server_id': ?serverId,
+          'conversation_id': ?conversationId,
         },
       ),
     );
@@ -357,11 +357,11 @@ class WebSocketService {
       WsMessage(
         op: 22,
         data: {
-          if (channelId != null) 'channel_id': channelId,
-          if (serverId != null) 'server_id': serverId,
-          if (conversationId != null) 'conversation_id': conversationId,
+          'channel_id': ?channelId,
+          'server_id': ?serverId,
+          'conversation_id': ?conversationId,
           'content': content,
-          if (replyToId != null) 'reply_to_id': replyToId,
+          'reply_to_id': ?replyToId,
         },
       ),
     );
@@ -376,8 +376,8 @@ class WebSocketService {
       WsMessage(
         op: 25,
         data: {
-          if (channelId != null) 'channel_id': channelId,
-          if (conversationId != null) 'conversation_id': conversationId,
+          'channel_id': ?channelId,
+          'conversation_id': ?conversationId,
           'message_id': messageId,
         },
       ),

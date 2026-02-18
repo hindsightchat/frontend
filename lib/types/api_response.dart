@@ -19,7 +19,7 @@ class ApiResponse<T> {
     if (data != null) {
       return ApiResponse<R>(
         success: success,
-        data: transform(data!),
+        data: transform(data as T),
         error: error,
         statusCode: statusCode,
       );

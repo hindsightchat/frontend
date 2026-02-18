@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hindsightchat/components/Colours.dart';
 import 'package:hindsightchat/providers/DataProvider.dart';
 import 'package:hindsightchat/types/models.dart';
 import 'package:provider/provider.dart';
